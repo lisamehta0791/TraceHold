@@ -24,8 +24,15 @@ _PW_FILE = Path(os.environ.get(
     "TRACEHOLD_PASSWORD_FILE",
     Path.home() / ".exasol-starter-kit" / "credentials" / "nano_sys_password",
 ))
-SCHEMA = os.environ.get("TRACEHOLD_SCHEMA", "TRACEHOLD")
-GT_SCHEMA = os.environ.get("TRACEHOLD_GT_SCHEMA", "TRACEHOLD_GT")
+SCHEMA = os.environ.get("TRACEHOLD_SCHEMA", "TRACEHOLD")          # working schema: calculation tables (disposable)
+SRC_SCHEMA = os.environ.get("TRACEHOLD_SRC_SCHEMA", "TRACEHOLD_SRC")  # source data: read-only for the engine
+AUDIT_SCHEMA = os.environ.get("TRACEHOLD_AUDIT_SCHEMA", "TRACEHOLD_AUDIT")  # history: append-only for the engine
+GT_SCHEMA = os.environ.get("TRACEHOLD_GT_SCHEMA", "TRACEHOLD_GT")    # generator's answer key: never read by the engine
+ENGINE_USER = "TH_ENGINE"   # the limited user the app and the analysis connect as
+
+# Source tables: the engine may only read these (enforced by Exasol privileges and by Engine.exec).
+SOURCE_TABLES = ("INSTITUTIONS", "ACCOUNTS", "TRANSACTIONS", "CASES", "CASE_DISPUTED_TXNS", "REQUESTS",
+                 "REQUEST_TARGETS", "RESTRAINTS", "CHECKLIST_ITEMS", "DATASET_INFO", "REQUEST_DOCUMENTS")
 
 
 def _password() -> str:
@@ -37,11 +44,21 @@ def _password() -> str:
         f"No Exasol password: set TRACEHOLD_PASSWORD or create {_PW_FILE}")
 
 
-def connect(schema: str | None = None, **kw) -> pyexasol.ExaConnection:
+def engine_ready() -> bool:
+    return bool(os.environ.get("TRACEHOLD_ENGINE_PASSWORD"))
+
+
+def connect(schema: str | None = None, admin: bool = False, **kw) -> pyexasol.ExaConnection:
+    """The app and the analysis connect as the limited engine user once it exists (python -m app.secure);
+    loading, set-up and evaluation against the answer key use the administrator (admin=True)."""
+    if admin or not engine_ready():
+        user, password = USER, _password()
+    else:
+        user, password = ENGINE_USER, os.environ["TRACEHOLD_ENGINE_PASSWORD"]
     return pyexasol.connect(
         dsn=DSN,
-        user=USER,
-        password=_password(),
+        user=user,
+        password=password,
         schema=schema or "",
         encryption=True,
         # The local runtime uses a self-signed certificate.

@@ -6,6 +6,8 @@ import { api } from '../api';
 import type { CaseDetail as CD, Convention, Extraction, ReviewRow, RewordResult, TrailNode } from '../types';
 import { LetterReview } from '../components/LetterReview';
 import { BasisPanel } from '../components/BasisPanel';
+import { HoldDraft } from '../components/HoldDraft';
+import { RetracePanel } from '../components/RetracePanel';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -95,6 +97,10 @@ function CaseView({ d }: { d: CD }) {
         </div>
       </motion.div>
 
+
+      <motion.div variants={riseIn} className="card mb" style={{ padding: '14px 18px' }}>
+        <RetracePanel caseId={c.case_id} />
+      </motion.div>
 
       <motion.div variants={riseIn} className="case-grid">
         <div className="card" style={{ height: 560, display: 'flex', flexDirection: 'column', padding: '14px 0 0' }}>
@@ -374,7 +380,7 @@ const Fieldv = ({ k, v }: { k: string; v: string | null }) => (
 
 function TrailTab({ d, sel, onSel }: { d: CD; sel: string | null; onSel: (s: string) => void }) {
   return (
-    <div className="table-wrap" style={{ maxHeight: 460 }}>
+    <div className="table-wrap" tabIndex={0} role="region" aria-label="Scrollable table" style={{ maxHeight: 460 }}>
       <table className="ledger">
         <thead><tr><th>Txn</th><th>Time</th><th>From</th><th>To</th><th>Channel</th><th className="r">Layer</th><th className="r">Amount</th>
           <th className="r">Pro-rata</th><th className="r">FIFO</th><th className="r">LIFO</th><th>Terminal</th><th>Flags</th></tr></thead>
@@ -399,7 +405,7 @@ function SizingTab({ d, sel, onSel }: { d: CD; sel: string | null; onSel: (s: st
   const rows = d.nodes.filter((n) => !n.is_victim && (n as { kind?: string }).kind !== 'SINK');
   const max = Math.max(1, ...rows.map((n) => Math.max(n.upper_ext, n.requested_amount ?? 0)));
   return (
-    <div className="table-wrap" style={{ flex: 1, minHeight: 0 }}>
+    <div className="table-wrap" tabIndex={0} role="region" aria-label="Scrollable table" style={{ flex: 1, minHeight: 0 }}>
       <table className="ledger">
         <thead><tr><th>Account</th><th className="r">Layer</th><th className="r">Balance</th><th className="r">Pro-rata</th><th className="r">FIFO</th><th className="r">LIFO</th>
           <th style={{ minWidth: 180 }}>Range</th><th className="r">Share</th><th>Status</th><th>Classification</th><th className="r">Whole ÷ upper</th></tr></thead>
@@ -458,6 +464,18 @@ function DilutionTab({ d }: { d: CD }) {
 
 function ScopeTab({ d, onSel }: { d: CD; onSel: (s: string) => void }) {
   if (!d.review.length) return <p className="muted">No accounts were named in the request.</p>;
+  return (
+    <div className="stack" style={{ gap: 22 }}>
+      <ScopeList d={d} onSel={onSel} />
+      <div>
+        <h3 style={{ marginBottom: 8 }}>Draft a proportionate hold</h3>
+        <HoldDraft caseId={d.case.case_id} />
+      </div>
+    </div>
+  );
+}
+
+function ScopeList({ d, onSel }: { d: CD; onSel: (s: string) => void }) {
   const rows = [...d.review].sort((a, b) => (b.ratio_to_upper ?? 0) - (a.ratio_to_upper ?? 0));
   const max = Math.max(1, ...rows.map((r) => Math.max(r.upper, r.requested_amount ?? 0)));
   return (
@@ -582,6 +600,7 @@ function BasisTab({ caseId }: { caseId: number }) {
         { label: 'transfers in this money trail', value: String(f.transfers) },
         { label: 'layers (hops away from the victim)', value: String(f.layers ?? 0) },
         ...(data.run ? [{ label: `analysis run #${data.run.run_id} · checksum ${data.run.checksum.slice(7, 19)}`, value: `${Math.round(data.run.duration_s)} s` }] : []),
+        ...(data.source_check ? [{ label: `source tables unchanged by run #${data.source_check.run_id} (row counts and fingerprints checked before and after)`, value: data.source_check.unchanged ? `${data.source_check.tables} of ${data.source_check.tables}` : 'changed!' }] : []),
       ]} />
   );
 }

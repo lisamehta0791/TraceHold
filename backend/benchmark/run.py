@@ -259,6 +259,17 @@ def main():
         old = json.loads(prev.read_text())
         results = [r for r in old.get("results", []) if r["engine"] not in a.engines]
         versions = {k: v for k, v in old.get("versions", {}).items() if k not in a.engines}
+    try:
+        _run_engines(a, sides, results, versions)
+    finally:
+        # Whatever happened, PostgreSQL is stopped and Exasol is running again afterwards.
+        if "PostgreSQL" in a.engines:
+            _docker("stop", "-t", "120", PG_CONTAINER)
+            _docker("start", "exasol-nano")
+            _wait_exasol()
+
+
+def _run_engines(a, sides, results, versions):
     for name in a.engines:
         # Only one database runs at a time: both share a 4 GB Docker VM.
         if name == "Exasol":
@@ -283,10 +294,6 @@ def main():
             from app.engine import run_full
             run_full(db.SCHEMA, Config(), log=lambda m: None)
     _write(results, versions)
-    if "PostgreSQL" in a.engines:
-        _docker("stop", "-t", "120", PG_CONTAINER)
-        _docker("start", "exasol-nano")
-        _wait_exasol()
 
 
 def _docker(*args):
@@ -311,16 +318,6 @@ def _write(results, versions):
                      "Only these workloads were measured; no general claim is made.",
            "results": results}
     (db.RESULTS / "benchmark.json").write_text(json.dumps(out, indent=2))
-    lines = ["# Benchmark results", "", f"Generated {out['generated_at']}. {out['method']}", "",
-             f"Hardware: {out['hardware'].get('cpu', '')}, {out['hardware'].get('ram_gb', '?')} GB RAM, "
-             f"{out['hardware']['cpu_count']} logical CPUs. {out['hardware']['containers']}", "",
-             f"Versions: {versions}", "",
-             "| Engine | Tier | Workload | Transactions | Cold (s) | Median warm (s) | Min–max (s) | Runs |",
-             "|---|---|---|---:|---:|---:|---:|---:|"]
-    for r in results:
-        lines.append(f"| {r['engine']} | {r['tier']} | {r['workload']} | {r['rows']:,} | {r['cold_s']} | "
-                     f"{r['median_s']} | {r['min_s']}–{r['max_s']} | {r['runs']} |")
-    (db.RESULTS / "benchmark.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

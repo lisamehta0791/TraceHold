@@ -1,4 +1,4 @@
-// Types mirroring docs/api-contract.md exactly.
+// Types mirroring the API responses in backend/app/main.py.
 
 export type Status = 'DETERMINED' | 'RANGE' | 'UNDETERMINABLE' | 'OUT_OF_SCOPE';
 export type Classification = 'WITHIN_EVIDENCE' | 'WITHIN_RANGE' | 'EXCEEDS_EVIDENCE' | 'CANNOT_DETERMINE';
@@ -160,6 +160,7 @@ export interface CaseBasis {
   run: { run_id: number; started: string; duration_s: number; checksum: string } | null;
   facts: { transfers: number; accounts: number; layers: number; postings: number; transactions_total: number };
   steps: BasisStep[]; rules: BasisRule[]; page_query: string;
+  source_check?: { run_id: number; tables: number; rows: number; unchanged: boolean } | null;
 }
 export interface SqlScript { name: string; purpose: string; sql: string }
 export interface Explanation2 { account_id: string; steps: PgStep[]; summary: string | null }
@@ -207,7 +208,20 @@ export interface Run {
   snapshot_id: string | null; software_version: string | null; checksum: string | null;
   duration_s: number | null; config: Record<string, unknown> | null;
 }
-export interface RunDetail extends Run { steps: { step: string; ms: number; rows: number | null }[] }
+export interface Fingerprint { table: string; rows_before: number | null; rows_after: number | null; fingerprint_before: string | null; fingerprint_after: string | null; unchanged: boolean }
+export interface RunDetail extends Run {
+  steps: { step: string; ms: number; rows: number | null }[];
+  fingerprints?: Fingerprint[]; source_unchanged?: boolean | null;
+  history_rows?: { sizing: number; review: number; cases: number; trail: number } | null;
+  compared_with?: { run_id: number; same_snapshot: boolean; identical_results: boolean };
+}
+export interface ProtectionCheck { action: string; statement: string; expected: string; result: string; ok: boolean; exasol_says: string }
+export interface Protection { ready: boolean; note?: string; engine_user?: string; all_ok?: boolean; checks?: ProtectionCheck[];
+  schemas?: { schema: string; holds: string; engine: string }[] }
+export interface RunCompare { a: number; b: number; rows_a: number; rows_b: number; changed: number; reclassified: number; identical: boolean }
+export interface LiveAnalysis { analysis_id: number; created: string; case_title: string; engine_ms: number;
+  summary: { loss?: number; totals?: { requested: number; traced_pr: number; traced_fifo: number }; request_status?: string; conservation_ok?: boolean;
+    review?: { account_id: string; requested: number | null; upper: number | null; classification: string }[] } }
 
 export interface Evaluation {
   generated_at: string; note: string;
@@ -246,3 +260,20 @@ export interface AskResult {
 export interface RewordResult { template: string; reworded: string; text: string; used: 'AI' | 'TEMPLATE'; model: string; prompt_version: string;
   check: { ok: boolean; problems: string[]; facts_checked: number } }
 export interface AiLogRow { call_id: number; feature: string; model: string; prompt_version: string; input_ref: string; ms: number; status: string; created: string; output_preview: string }
+
+export interface HoldItem { account_id: string; requested: number | null; balance: number | null; lower: number | null; upper: number | null; status: string | null }
+export interface HoldPlanRow extends HoldItem { proposed: number | null; released?: number; note: string }
+export interface HoldDraftResult { basis: string; plan: HoldPlanRow[]; text: string; totals: { requested: number; proposed: number; released: number; not_sized: number } }
+
+export interface RetraceResult { case_id: number; ms: number; layers: number; ledger_transactions: number; steps: BasisStep[]; identical: boolean; schema: string;
+  accounts: { account_id: string; layer: number; retained_pr: number | null; retained_fifo: number | null; lower: number | null; upper: number | null; status: string; matches_stored: boolean }[] }
+
+export interface ExasolAtWork {
+  version: string;
+  db_size: { raw_gib: string; mem_gib: string; ram_gib: string; storage_gib: string; objects: number } | null;
+  source_tables: { name: string; row_count: number; raw: number; mem: number }[];
+  work_tables: { name: string; row_count: number; raw: number; mem: number }[];
+  indexes: { total: number; by_schema: Record<string, number>; created_by_tracehold: number; largest: { sch: string; tbl: string; kind: string; mem: number; remarks: string }[] };
+  last_run: { run_id: number; statements: number; seconds: number; rows: number; temp_peak_mib: number;
+    by_command: { command: string; n: number; seconds: number | null; row_count: number | null }[] } | null;
+}

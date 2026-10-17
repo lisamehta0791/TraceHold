@@ -7,7 +7,7 @@ import { api } from '../api';
 import { ScrollProgress } from '../components/Ambient';
 import { Button } from '../components/Button';
 import { Counter } from '../components/Counter';
-import { IconCheck, IconChevron, IconDb, IconDoc, IconFlask, IconHand, IconScale, IconShield, IconX } from '../components/Icons';
+import { IconCheck, IconChevron, IconDb, IconFlask, IconHand, IconScale, IconX } from '../components/Icons';
 import { LogoMark } from '../components/NavRail';
 import { SilkHero } from '../components/SilkHero';
 import { C, rupeesCompact } from '../lib/format';
@@ -143,33 +143,33 @@ const SCENARIO_CARDS = [
 ];
 
 function Scenarios({ onPick }: { onPick: (id: string) => void }) {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] });
-  const x = useTransform(scrollYProgress, [0, 1], ['2%', '-58%']);
-  const motionOK = useMotionOK();
   return (
-    <section className="lp-hscroll" ref={ref} id="scenarios">
-      <div className="lp-hscroll-sticky">
-        <div className="lp-wrap">
+    <section className="lp-section" id="scenarios">
+      <div className="lp-wrap">
+        <Reveal>
           <div className="eyebrow">Try it yourself</div>
-          <h2 className="lp-h2">Five cases you can run live — or build your own</h2>
+          <h2 className="lp-h2">Five cases you can run live, or build your own</h2>
           <p className="muted" style={{ maxWidth: 640 }}>Pick one and TraceHold loads it into Exasol, rebuilds the trail and explains every figure. You can change any number.</p>
-        </div>
-        <motion.div className="lp-hscroll-track" style={motionOK ? { x } : undefined}>
+        </Reveal>
+        <div className="lp-sc-grid">
           {SCENARIO_CARDS.map((c, i) => (
-            <motion.button key={c.id} className="lp-sc" onClick={() => onPick(c.id)} whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
-              <span className="lp-sc-no">0{i + 1}</span>
-              <b>{c.t}</b>
-              <span>{c.d}</span>
-              <em>{c.k}</em>
-              <span className="lp-sc-go">Run this case →</span>
-            </motion.button>
+            <Reveal key={c.id} delay={0.04 * i}>
+              <button className="lp-sc" onClick={() => onPick(c.id)}>
+                <span className="lp-sc-no">0{i + 1}</span>
+                <b>{c.t}</b>
+                <span>{c.d}</span>
+                <em>{c.k}</em>
+                <span className="lp-sc-go">Run this case →</span>
+              </button>
+            </Reveal>
           ))}
-          <motion.button className="lp-sc own" onClick={() => onPick('')} whileHover={{ y: -6 }}>
-            <span className="lp-sc-no">+</span><b>Enter your own values</b><span>Accounts, transfers and the police request — your numbers.</span>
-            <span className="lp-sc-go">Start from scratch →</span>
-          </motion.button>
-        </motion.div>
+          <Reveal delay={0.2}>
+            <button className="lp-sc own" onClick={() => onPick('')}>
+              <span className="lp-sc-no">+</span><b>Enter your own values</b><span>Accounts, transfers and the police request: your numbers.</span>
+              <span className="lp-sc-go">Start from scratch →</span>
+            </button>
+          </Reveal>
+        </div>
       </div>
     </section>
   );
@@ -221,7 +221,7 @@ function ScrollText({ text }: { text: string }) {
   );
 }
 function Word({ children, progress, range }: { children: string; progress: MotionValue<number>; range: [number, number] }) {
-  const opacity = useTransform(progress, range, [0.18, 1]);
+  const opacity = useTransform(progress, range, [0.5, 1]);  // 0.5 keeps unrevealed words at 3:1 contrast (WCAG large text)
   return <><motion.span style={{ opacity }}>{children}</motion.span>{' '}</>;
 }
 
@@ -300,7 +300,7 @@ function Step({ i, title, text, active, onActive }: { i: number; title: string; 
     <li ref={ref} className={`lp-step ${active ? 'active' : ''}`}>
       <motion.span className="lp-step-no" animate={{ backgroundColor: active ? C.oxblood : 'rgba(0,0,0,0)', color: active ? '#FBEFE2' : C.inkSoft }}
         transition={{ duration: 0.3 }}>{i + 1}</motion.span>
-      <motion.div animate={{ opacity: active ? 1 : 0.45 }} transition={{ duration: 0.3 }}>
+      <motion.div animate={{ opacity: active ? 1 : 0.82 }} transition={{ duration: 0.3 }}>
         <h3>{title}</h3>
         <p>{text}</p>
       </motion.div>
@@ -490,10 +490,12 @@ function Different() {
 // ================================================================ principles
 function Principles() {
   const items = [
-    { icon: <IconHand size={20} />, t: 'A person decides', d: 'TraceHold never freezes or releases anything. It informs the officer who does.' },
-    { icon: <IconShield size={20} />, t: 'No labels, no scores', d: 'It does not decide guilt and never calls anyone a mule. It reports facts.' },
-    { icon: <IconScale size={20} />, t: 'Ranges, not verdicts', d: 'When the conventions disagree, both ends are shown. When records are missing, it says so.' },
-    { icon: <IconDoc size={20} />, t: 'Synthetic data only', d: 'Every account, case and transaction here is generated. No real person’s data is used.' },
+    { t: 'A person decides', d: 'TraceHold never freezes or releases anything. It informs the officer who does.' },
+    { t: 'No labels, no scores', d: 'It does not decide guilt and never calls anyone a mule. It reports facts.' },
+    { t: 'Ranges, not verdicts', d: 'When the conventions disagree, both ends are shown. When records are missing, it says so.' },
+    { t: 'Source data is read-only', d: 'The analysis cannot change or delete the records it works from; Exasol refuses it.' },
+    { t: 'AI never touches a figure', d: 'AI only reads letters and words answers. Every number comes from SQL and is checked.' },
+    { t: 'Synthetic data only', d: 'Every account, case and transaction here is generated. No real person’s data is used.' },
   ];
   return (
     <section className="lp-section lp-tinted">
@@ -502,15 +504,13 @@ function Principles() {
           <div className="eyebrow">What it will never do</div>
           <h2 className="lp-h2">Decision support, built to be careful</h2>
         </Reveal>
-        <div className="lp-four">
+        <dl className="lp-rules">
           {items.map((it, i) => (
-            <Reveal key={it.t} delay={0.08 * i} className="lp-principle">
-              <div className="lp-principle-icon">{it.icon}</div>
-              <h3>{it.t}</h3>
-              <p>{it.d}</p>
+            <Reveal key={it.t} delay={0.04 * i} className="lp-rule">
+              <dt>{it.t}</dt><dd>{it.d}</dd>
             </Reveal>
           ))}
-        </div>
+        </dl>
       </div>
     </section>
   );

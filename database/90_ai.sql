@@ -3,10 +3,10 @@
 -- results with source spans, person confirmations, the AI call log and the
 -- question log; plus a results-only view schema for governed questions.
 -- No model ever writes to a table that holds a figure.
--- Parameters: {S}, {GT}, {R} (results view schema)
+-- Parameters: {S} (working schema), {SRC} (source), {A} (audit, append-only), {GT}, {R} (results views)
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS {S}.REQUEST_DOCUMENTS (
+CREATE TABLE IF NOT EXISTS {SRC}.REQUEST_DOCUMENTS (
     doc_id      DECIMAL(9,0) PRIMARY KEY,
     request_id  DECIMAL(9,0),
     case_id     DECIMAL(9,0),
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS {S}.REQUEST_DOCUMENTS (
     body        VARCHAR(20000) UTF8
 );
 
-CREATE TABLE IF NOT EXISTS {S}.EXTRACTION_RESULTS (
+CREATE TABLE IF NOT EXISTS {A}.EXTRACTION_RESULTS (
     extraction_id  DECIMAL(18,0),
     doc_id         DECIMAL(9,0),      -- NULL for a pasted letter
     field_name     VARCHAR(40),
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS {S}.EXTRACTION_RESULTS (
     created        TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS {S}.EXTRACTION_CONFIRMATIONS (
+CREATE TABLE IF NOT EXISTS {A}.EXTRACTION_CONFIRMATIONS (
     extraction_id   DECIMAL(18,0),
     field_name      VARCHAR(40),
     confirmed_value VARCHAR(2000) UTF8,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS {S}.EXTRACTION_CONFIRMATIONS (
     confirmed_at    TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS {S}.AI_LOG (
+CREATE TABLE IF NOT EXISTS {A}.AI_LOG (
     call_id        DECIMAL(18,0),
     feature        VARCHAR(10),       -- CF9, AF7, AF8
     model          VARCHAR(80),
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS {S}.AI_LOG (
     created        TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS {S}.ASK_LOG (
+CREATE TABLE IF NOT EXISTS {A}.ASK_LOG (
     ask_id       DECIMAL(18,0),
     question     VARCHAR(2000) UTF8,
     mode         VARCHAR(12),         -- TEMPLATE, SQL, REJECTED

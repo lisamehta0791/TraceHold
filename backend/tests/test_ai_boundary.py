@@ -30,12 +30,15 @@ def test_calculation_path_does_not_import_ai():
 def test_analysis_sql_never_reads_ground_truth():
     for name in ANALYSIS_SQL:
         src = (ROOT / "database" / name).read_text(encoding="utf-8")
-        assert "{GT}" not in src and "TRACEHOLD_GT" not in src.upper(), name
+        assert "{GT}" not in src and "TRACEHOLD_GT" not in src.upper() and "TRACEHOLD_AUDIT" not in src.upper(), name
 
 
-def test_engine_never_uses_ground_truth_schema():
+def test_engine_never_reads_ground_truth():
     src = (BACKEND / "app/engine.py").read_text(encoding="utf-8")
-    assert "GT_SCHEMA" not in src
+    # the answer-key schema appears only in the guard that refuses changes to it
+    assert not re.search(r"(FROM|JOIN)\s+\{?db\.GT_SCHEMA", src)
+    guard = src[src.index("def check_statement"):src.index("class Engine")]
+    assert src.count("GT_SCHEMA") == guard.count("GT_SCHEMA")
 
 
 @pytest.mark.db

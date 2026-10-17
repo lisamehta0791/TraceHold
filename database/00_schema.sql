@@ -1,6 +1,8 @@
--- TraceHold base schema. {S} = analysis schema, {GT} = ground-truth schema.
--- The analysis SQL only ever reads {S}; {GT} is written by the generator and
--- read only by the evaluation harness.
+-- TraceHold source data: what the banks and police supplied. {S} = source schema.
+-- In the full dataset this is TRACEHOLD_SRC, which the analysis may only read
+-- (Exasol privileges); the analysis works on views of it in TRACEHOLD.
+-- In the live-analysis scratch schema (TH_PLAYGROUND) the same tables hold the
+-- case typed in by the user.
 
 CREATE SCHEMA IF NOT EXISTS {S};
 
@@ -111,59 +113,3 @@ CREATE OR REPLACE TABLE {S}.DATASET_INFO (
     info_key         VARCHAR(40),
     info_value       VARCHAR(2000)
 );
-
--- ---------------------------------------------------------------- run log
-CREATE TABLE IF NOT EXISTS {S}.RUNS (
-    run_id           DECIMAL(9,0),
-    started          TIMESTAMP,
-    finished         TIMESTAMP,
-    run_status       VARCHAR(10),
-    snapshot_id      VARCHAR(80),
-    software_version VARCHAR(20),
-    config_json      VARCHAR(4000),
-    checksum         VARCHAR(80),
-    duration_s       DOUBLE,
-    error_text       VARCHAR(2000)
-);
-
-CREATE TABLE IF NOT EXISTS {S}.RUN_STEPS (
-    run_id           DECIMAL(9,0),
-    step_no          DECIMAL(5,0),
-    step_name        VARCHAR(100),
-    ms               DOUBLE,
-    row_count        DECIMAL(18,0)
-);
-
--- ---------------------------------------------------------------- ground truth
-CREATE SCHEMA IF NOT EXISTS {GT};
-
-CREATE OR REPLACE TABLE {GT}.CASE_SCENARIO (
-    case_id          DECIMAL(9,0),
-    scenario         VARCHAR(30)
-);
-
--- Transfers the generator designated as part of the fraud chain.
-CREATE OR REPLACE TABLE {GT}.CHAIN_TXNS (
-    case_id          DECIMAL(9,0),
-    txn_id           VARCHAR(24),
-    layer            DECIMAL(4,0)
-);
-
--- Provenance ledger: disputed funds per case/account at the case reference time,
--- computed by the generator's own (independent, row-by-row) implementation.
-CREATE OR REPLACE TABLE {GT}.LEDGER (
-    case_id          DECIMAL(9,0),
-    account_id       VARCHAR(20),
-    convention       VARCHAR(4),
-    retained         DOUBLE
-);
-
-CREATE OR REPLACE TABLE {GT}.PLANTED_DEFECTS (
-    defect_type      VARCHAR(40),
-    case_id          DECIMAL(9,0),
-    request_id       DECIMAL(9,0),
-    account_id       VARCHAR(20),
-    txn_id           VARCHAR(24),
-    detail           VARCHAR(200)
-);
-

@@ -2,7 +2,7 @@
 import type {
   Benchmark, CaseDetail, CaseList, CaseQuery, Evaluation, Explanation, Health, LienFlag, LienReview,
   Overview, Oversight, PolicySim, Run, RunDetail, PgBody, PgResult, PgScenario, Explanation2, Sensitivity, Speed, CaseBasis, SqlScript,
-  AiStatus, Extraction, SampleLetter, AskResult, RewordResult, AiLogRow,
+  AiStatus, Extraction, SampleLetter, AskResult, RewordResult, AiLogRow, Protection, RunCompare, LiveAnalysis, HoldDraftResult, RetraceResult, ExasolAtWork,
 } from './types';
 
 export * from './types';
@@ -69,11 +69,19 @@ export const api = {
   speed: (): Promise<Speed> => http('/speed'),
   sensitivity: (): Promise<Sensitivity> => http('/sensitivity'),
   runs: (): Promise<{ runs: Run[] }> => http('/runs'),
-  startRun: (): Promise<{ run_id: number }> => http('/runs', { method: 'POST' }),
+  startRun: (mode: 'python' | 'lua' = 'python'): Promise<{ run_id: number }> => http('/runs', { method: 'POST', body: JSON.stringify({ mode }) }),
   run: (id: number): Promise<RunDetail> => http(`/runs/${id}`),
   caseBasis: (id: number | string): Promise<CaseBasis> => http(`/cases/${encodeURIComponent(String(id))}/basis`),
   sqlScript: (name: string, where: 'cases' | 'playground' = 'cases'): Promise<SqlScript> =>
     http(`/basis/sql/${encodeURIComponent(name)}${qs({ where })}`),
+  caseHoldDraft: (id: number, basis: string, overrides: Record<string, number>): Promise<HoldDraftResult> =>
+    http(`/cases/${id}/hold-draft`, { method: 'POST', body: JSON.stringify({ basis, overrides }) }),
+  holdDraft: (body: Record<string, unknown>): Promise<HoldDraftResult> => http('/hold-draft', { method: 'POST', body: JSON.stringify(body) }),
+  retrace: (id: number): Promise<RetraceResult> => http(`/cases/${id}/retrace`, { method: 'POST' }),
+  exasol: (): Promise<ExasolAtWork> => http('/exasol'),
+  protection: (): Promise<Protection> => http('/protection'),
+  compareRuns: (a: number, b: number): Promise<RunCompare> => http(`/history/compare${qs({ a, b })}`),
+  liveAnalyses: (limit = 20): Promise<{ analyses: LiveAnalysis[] }> => http(`/live-analyses${qs({ limit })}`),
   aiStatus: (): Promise<AiStatus> => http('/ai/status'),
   sampleLetters: (scenario: string): Promise<{ letters: SampleLetter[] }> => http(`/ai/letters${qs({ scenario })}`),
   caseLetter: (id: number | string): Promise<{ letter: { doc_id: number; request_id: number; split: string; body: string } | null }> =>

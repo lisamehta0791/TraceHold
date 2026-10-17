@@ -36,6 +36,7 @@ export function TopBar() {
     <header className="topbar">
       <span className="crumb">{title}</span>
       <span className="grow" />
+      <span className="synthetic-tag" title="Every account, case and transaction in TraceHold is generated synthetically">Synthetic data</span>
       <span className={`health ${err || (health && !ok) ? 'bad' : !health ? 'wait' : ''}`} title={health ? `Exasol ${health.exasol_version} · schema ${health.schema} · run #${health.latest_run_id ?? '—'}` : undefined}>
         <span className="dot" />
         <IconDb size={14} />

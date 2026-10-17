@@ -14,15 +14,16 @@ from app import db
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else "db"
     try:
-        conn = db.connect(fetch_dict=False)
+        conn = db.connect(admin=True, fetch_dict=False)
     except Exception as e:
         print(f"UNREACHABLE: {str(e).splitlines()[0] if str(e) else e}", file=sys.stderr)
         sys.exit(2)
     try:
         if what == "results":
             names = {r[0] for r in conn.execute(
-                "SELECT TABLE_NAME FROM EXA_ALL_TABLES WHERE TABLE_SCHEMA = {s} "
-                "AND TABLE_NAME IN ('CASE_SUMMARY', 'TRANSACTIONS')", {"s": db.SCHEMA}).fetchall()}
+                "SELECT TABLE_NAME FROM EXA_ALL_TABLES WHERE (TABLE_SCHEMA = {s} AND TABLE_NAME = 'CASE_SUMMARY') "
+                "OR (TABLE_SCHEMA IN ({s}, {src}) AND TABLE_NAME = 'TRANSACTIONS')",
+                {"s": db.SCHEMA, "src": db.SRC_SCHEMA}).fetchall()}
             # READY: results exist. DATA: data loaded, analysis missing. EMPTY: nothing loaded.
             print("READY" if "CASE_SUMMARY" in names else "DATA" if "TRANSACTIONS" in names else "EMPTY")
         else:

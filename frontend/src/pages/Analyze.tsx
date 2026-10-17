@@ -8,6 +8,7 @@ import type { ConfirmedFields } from '../components/LetterReview';
 import { Button } from '../components/Button';
 import { ClassChip, ReqChip, StatusChip } from '../components/Chip';
 import { BasisPanel } from '../components/BasisPanel';
+import { HoldDraft } from '../components/HoldDraft';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ErrorCard } from '../components/ErrorCard';
 import { IconAlert, IconCheck, IconConflict, IconCopy, IconLetter, IconPlay, IconPlus, IconSpark, IconTrash, IconX } from '../components/Icons';
@@ -80,7 +81,7 @@ export default function Analyze() {
         <StepTitle n={1} title="Choose your data" />
         <div className="seg">
           {(['demo', 'own', 'letter'] as const).map((m) => (
-            <button key={m} className={mode === m ? 'on' : ''} onClick={() => switchMode(m)}>
+            <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => switchMode(m)}>
               {mode === m && <motion.span layoutId="seg-mode" className="seg-on" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
               <span>{m === 'demo' ? 'Use a demo scenario' : m === 'own' ? 'Enter my own values' : 'Read a police letter (AI)'}</span>
             </button>
@@ -90,7 +91,7 @@ export default function Analyze() {
           {mode === 'demo' ? (
             <motion.div key="demo" className="sc-grid" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               {scenarios.map((s) => (
-                <button key={s.id} className={`sc-card ${picked === s.id ? 'on' : ''}`} onClick={() => pick(s)}>
+                <button key={s.id} className={`sc-card ${picked === s.id ? 'on' : ''}`} aria-pressed={picked === s.id} onClick={() => pick(s)}>
                   {picked === s.id && <motion.span layoutId="sc-on" className="sc-ring" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
                   <b>{s.title}</b>
                   <span>{s.summary}</span>
@@ -263,9 +264,9 @@ function Editor({ body, onChange }: { body: PgBody; onChange: (b: PgBody) => voi
           <tbody>
             {body.accounts.map((a, i) => (
               <tr key={i}>
-                <td><input value={a.name} maxLength={12} onChange={(e) => set({ accounts: body.accounts.map((x, k) => k === i ? { ...x, name: e.target.value.toUpperCase() } : x) })} /></td>
-                <td><input type="number" min={0} value={a.opening} onChange={(e) => set({ accounts: body.accounts.map((x, k) => k === i ? { ...x, opening: Number(e.target.value) } : x) })} /></td>
-                <td><button className="icon-btn" title="Remove" disabled={body.accounts.length <= 1} onClick={() => set({ accounts: body.accounts.filter((_, k) => k !== i) })}><IconTrash size={14} /></button></td>
+                <td><input aria-label={`Account ${i + 1} name`} value={a.name} maxLength={12} onChange={(e) => set({ accounts: body.accounts.map((x, k) => k === i ? { ...x, name: e.target.value.toUpperCase() } : x) })} /></td>
+                <td><input aria-label={`Account ${a.name || i + 1} starting balance in rupees`} type="number" min={0} value={a.opening} onChange={(e) => set({ accounts: body.accounts.map((x, k) => k === i ? { ...x, opening: Number(e.target.value) } : x) })} /></td>
+                <td><button className="icon-btn" title="Remove" aria-label={`Remove account ${a.name}`} disabled={body.accounts.length <= 1} onClick={() => set({ accounts: body.accounts.filter((_, k) => k !== i) })}><IconTrash size={14} /></button></td>
               </tr>
             ))}
           </tbody>
@@ -280,16 +281,16 @@ function Editor({ body, onChange }: { body: PgBody; onChange: (b: PgBody) => voi
           <tbody>
             {body.transfers.map((t, i) => (
               <tr key={i}>
-                <td><select value={t.from} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, from: e.target.value } : x) })}>
+                <td><select aria-label={`Transfer ${i + 1}: from`} value={t.from} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, from: e.target.value } : x) })}>
                   <option value="VICTIM">Victim</option>{names.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select></td>
-                <td><select value={t.to} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, to: e.target.value } : x) })}>
+                <td><select aria-label={`Transfer ${i + 1}: to`} value={t.to} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, to: e.target.value } : x) })}>
                   {names.map((n) => <option key={n} value={n}>{n}</option>)}
                   <option value="CASH">Cash withdrawal</option><option value="OTHER_BANK">Another bank</option>
                 </select></td>
-                <td><input type="number" min={1} value={t.amount} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, amount: Number(e.target.value) } : x) })} /></td>
-                <td><input type="number" min={0} className="narrow" value={t.minute} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, minute: Number(e.target.value) } : x) })} /></td>
-                <td><button className="icon-btn" title="Remove" disabled={body.transfers.length <= 1} onClick={() => set({ transfers: body.transfers.filter((_, k) => k !== i) })}><IconTrash size={14} /></button></td>
+                <td><input aria-label={`Transfer ${i + 1}: amount in rupees`} type="number" min={1} value={t.amount} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, amount: Number(e.target.value) } : x) })} /></td>
+                <td><input aria-label={`Transfer ${i + 1}: minutes after 14:00`} type="number" min={0} className="narrow" value={t.minute} onChange={(e) => set({ transfers: body.transfers.map((x, k) => k === i ? { ...x, minute: Number(e.target.value) } : x) })} /></td>
+                <td><button className="icon-btn" title="Remove" aria-label={`Remove transfer ${i + 1}`} disabled={body.transfers.length <= 1} onClick={() => set({ transfers: body.transfers.filter((_, k) => k !== i) })}><IconTrash size={14} /></button></td>
               </tr>
             ))}
           </tbody>
@@ -328,10 +329,10 @@ function Editor({ body, onChange }: { body: PgBody; onChange: (b: PgBody) => voi
                 </label>
                 {t && (
                   <>
-                    <select value={t.scope} onChange={(e) => setTarget(n, { ...t, scope: e.target.value as 'WHOLE_BALANCE' | 'AMOUNT' })}>
+                    <select aria-label={`How much of account ${n} to hold`} value={t.scope} onChange={(e) => setTarget(n, { ...t, scope: e.target.value as 'WHOLE_BALANCE' | 'AMOUNT' })}>
                       <option value="WHOLE_BALANCE">whole balance</option><option value="AMOUNT">an amount</option>
                     </select>
-                    {t.scope === 'AMOUNT' && <input type="number" className="narrow" value={t.amount ?? 0} onChange={(e) => setTarget(n, { ...t, amount: Number(e.target.value) })} />}
+                    {t.scope === 'AMOUNT' && <input aria-label={`Amount to hold in account ${n}`} type="number" className="narrow" value={t.amount ?? 0} onChange={(e) => setTarget(n, { ...t, amount: Number(e.target.value) })} />}
                   </>
                 )}
               </div>
@@ -426,7 +427,7 @@ function Results({ r }: { r: PgResult }) {
         <StepTitle n="③" title="How much of each account is the victim's money?" sub="Money is not labelled once it is mixed, so two disclosed counting rules are used. Pro-rata: every payment carries the account's current share of disputed money. FIFO: the oldest money leaves first." />
         <div className="acc-tabs">
           {r.accounts.map((a) => (
-            <button key={a.account_id} className={acc === a.account_id ? 'on' : ''} onClick={() => setAcc(a.account_id)}>
+            <button key={a.account_id} className={acc === a.account_id ? 'on' : ''} aria-pressed={acc === a.account_id} onClick={() => setAcc(a.account_id)}>
               {acc === a.account_id && <motion.span layoutId="acc-on" className="acc-on" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
               <span>{a.account_id}</span>
             </button>
@@ -455,6 +456,18 @@ function Results({ r }: { r: PgResult }) {
           </div>
         )}
         {r.forwarded.length > 0 && r.forwarded.map((d, i) => <Draft key={i} title="Money left for another bank — request drafted for that bank" text={d} />)}
+        {r.review.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <h3 style={{ marginBottom: 8 }}>Draft a proportionate hold</h3>
+            <HoldDraft live={{
+              case_ref: 'LIVE-ANALYSIS', ref_time: r.ref_time, request: {},
+              items: r.review.map((v) => {
+                const a = r.accounts.find((x) => x.account_id === v.account_id);
+                return { account_id: v.account_id, requested: v.requested, balance: a?.balance ?? null, lower: v.lower, upper: v.upper, status: a?.status ?? null };
+              }),
+            }} />
+          </div>
+        )}
       </motion.section>
 
       {/* step 5: conservation */}

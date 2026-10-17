@@ -12,3 +12,6 @@ frontend/tsconfig.tsbuildinfo
 .env.*
 !.env.example
 .venv-mcp/
+
+# Office lock files
+~$*

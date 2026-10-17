@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -36,6 +37,7 @@ class Config:
     lien_threshold: float = 50000.0  # AF1 band boundary (2 Jan 2026 procedure as reported)
     as_of: str = "2026-10-15"        # AF1 "today"
     conventions: list = field(default_factory=lambda: ["PR", "FIFO", "LIFO"])
+    orchestration: str = "python"   # python (steps sent from Python) or lua (one Exasol script)
 
     def sql_params(self, schema: str) -> dict:
         if self.ref_rule == "REQUEST":
@@ -66,6 +68,33 @@ def step_file(label: str) -> str | None:
     return next((f for prefix, f in _STEP_FILES if label.startswith(prefix)), None)
 
 
+class ProtectedObjectError(RuntimeError):
+    """An analysis statement tried to change source data, history or the answer key."""
+
+
+_MUTATING = re.compile(
+    r"^\s*(?:DROP\s+(?:TABLE|VIEW|SCHEMA)(?:\s+IF\s+EXISTS)?|DELETE\s+FROM|TRUNCATE\s+TABLE|UPDATE|MERGE\s+INTO|"
+    r"INSERT\s+INTO|ALTER\s+TABLE|CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW)(?:\s+IF\s+NOT\s+EXISTS)?|RENAME\s+\w+)"
+    r"\s+([\w\"]+(?:\.[\w\"]+)?)", re.I)
+
+
+def check_statement(sql: str) -> None:
+    """Second line of defence behind Exasol's privileges: analysis SQL may only create, change or drop its own
+    calculation tables. Anything aimed at a source table, the audit history or the answer key is refused."""
+    for part in [p for p in re.split(r";\s*\n", sql) if p.strip()]:
+        body = "\n".join(ln for ln in part.splitlines() if not ln.strip().startswith("--"))
+        m = _MUTATING.match(body)
+        if not m:
+            continue
+        if re.match(r"\s*DROP\s+SCHEMA", body, re.I):
+            raise ProtectedObjectError(f"Refused: the analysis never drops a schema. Statement: {body.strip()[:160]}")
+        target = m.group(1).replace('"', "").upper()
+        schema, _, name = target.rpartition(".")
+        if schema in (db.SRC_SCHEMA, db.AUDIT_SCHEMA, db.GT_SCHEMA) or name in db.SOURCE_TABLES:
+            raise ProtectedObjectError(f"Refused: the analysis may not change {target} (source data, history or "
+                                       f"answer key). Statement: {body.strip()[:160]}")
+
+
 class Engine:
     def __init__(self, conn, schema: str, cfg: Config | None = None, log=print, dialect="exasol",
                  run_id: int | None = None, on_step=None):
@@ -84,6 +113,7 @@ class Engine:
 
     # ------------------------------------------------------------ helpers
     def exec(self, sql: str):
+        check_statement(sql)
         if self.dialect == "exasol":
             return self.conn.execute(sql)
         cur = self.conn.cursor()
@@ -199,6 +229,7 @@ class Engine:
 
     def full(self):
         layers = self.core()
+        self.layers_used = layers
         self.request_checks()
         self.run_file("50_review.sql", "CF5 scope review, CF4 dilution")
         self.run_file("60_additional.sql", "AF1 lien review, AF4 speed")
@@ -209,30 +240,34 @@ class Engine:
 
     def request_checks(self):
         """CF1: the checklist lives in a table so it can change per jurisdiction."""
-        S = self.schema
         t = time.perf_counter()
-        allowed = {"issuing_officer", "designation", "agency", "agency_contact", "case_reference",
-                   "legal_provision", "action_type", "stated_amount", "quoted_txn_id"}
-        items = self.conn.execute(
-            f"SELECT item_code, field_name, label FROM {S}.CHECKLIST_ITEMS WHERE required = TRUE ORDER BY sort_order"
-        ).fetchall()
-        parts = []
-        for it in items:
-            it = {k.lower(): v for k, v in it.items()}
-            f = it["field_name"].lower()
-            if f not in allowed:
-                continue
-            label = it["label"].replace("'", "''")
-            parts.append(
-                f"SELECT request_id, '{it['item_code']}' AS item_code, '{label}' AS label, 'MISSING' AS kind, "
-                f"'{label} is not stated' AS detail FROM {S}.REQUESTS "
-                f"WHERE NULLIF(TRIM(CAST({f} AS VARCHAR(200))), '') IS NULL")
-        missing_sql = " UNION ALL ".join(parts) if parts else \
-            f"SELECT request_id, '' , '', 'MISSING', '' FROM {S}.REQUESTS WHERE 1 = 0"
-        self.params["MISSING_SQL"] = missing_sql
+        self.params["MISSING_SQL"] = missing_sql(self.conn, self.schema)
         for s in db.load_sql("40_requests.sql", **self.params):
             self.exec(s)
         self._record("CF1 request completeness and consistency", (time.perf_counter() - t) * 1000, file="40_requests.sql")
+
+
+def missing_sql(conn, S: str) -> str:
+    """One SELECT per required checklist item (CHECKLIST_ITEMS), joined with UNION ALL."""
+    allowed = {"issuing_officer", "designation", "agency", "agency_contact", "case_reference",
+               "legal_provision", "action_type", "stated_amount", "quoted_txn_id"}
+    items = conn.execute(
+        f"SELECT item_code, field_name, label FROM {S}.CHECKLIST_ITEMS WHERE required = TRUE ORDER BY sort_order"
+    ).fetchall()
+    parts = []
+    for it in items:
+        it = {k.lower(): v for k, v in it.items()} if isinstance(it, dict) else \
+            dict(zip(("item_code", "field_name", "label"), it))
+        f = it["field_name"].lower()
+        if f not in allowed:
+            continue
+        label = it["label"].replace("'", "''")
+        parts.append(
+            f"SELECT request_id, '{it['item_code']}' AS item_code, '{label}' AS label, 'MISSING' AS kind, "
+            f"'{label} is not stated' AS detail FROM {S}.REQUESTS "
+            f"WHERE NULLIF(TRIM(CAST({f} AS VARCHAR(200))), '') IS NULL")
+    return " UNION ALL ".join(parts) if parts else \
+        f"SELECT request_id, '' , '', 'MISSING', '' FROM {S}.REQUESTS WHERE 1 = 0"
 
 
 # ---------------------------------------------------------------- run log
@@ -253,48 +288,132 @@ def results_checksum(conn, schema: str) -> str:
     return "sha256:" + h.hexdigest()
 
 
+def audit_schema(schema: str) -> str:
+    """The full dataset keeps its history in TRACEHOLD_AUDIT; other schemas (benchmark tiers) keep their own."""
+    return db.AUDIT_SCHEMA if schema == db.SCHEMA else schema
+
+
 def start_run(conn, schema: str, cfg: Config) -> int:
-    S = schema
+    S, A = schema, audit_schema(schema)
     # A run that never finished (process stopped) is closed off as failed.
-    conn.execute(f"UPDATE {S}.RUNS SET run_status = 'FAILED', error_text = 'Interrupted before it finished' "
+    conn.execute(f"UPDATE {A}.RUNS SET run_status = 'FAILED', error_text = 'Interrupted before it finished' "
                  f"WHERE run_status = 'RUNNING'")
-    rid = conn.execute(f"SELECT COALESCE(MAX(run_id), 0) + 1 AS N FROM {S}.RUNS").fetchval()
+    rid = conn.execute(f"SELECT COALESCE(MAX(run_id), 0) + 1 AS N FROM {A}.RUNS").fetchval()
     snap = conn.execute(f"SELECT info_value FROM {S}.DATASET_INFO WHERE info_key = 'snapshot_id'").fetchval()
     conn.execute(
-        f"INSERT INTO {S}.RUNS (run_id, started, run_status, snapshot_id, software_version, config_json) "
+        f"INSERT INTO {A}.RUNS (run_id, started, run_status, snapshot_id, software_version, config_json) "
         f"VALUES ({{rid}}, CURRENT_TIMESTAMP, 'RUNNING', {{snap}}, {{ver}}, {{cfg}})",
         {"rid": rid, "snap": snap, "ver": SOFTWARE_VERSION, "cfg": json.dumps(asdict(cfg))})
     return int(rid)
 
 
+SOURCE_FOR_FINGERPRINT = ("INSTITUTIONS", "ACCOUNTS", "TRANSACTIONS", "CASES", "CASE_DISPUTED_TXNS", "REQUESTS",
+                          "REQUEST_TARGETS", "RESTRAINTS", "CHECKLIST_ITEMS", "DATASET_INFO")
+
+
+def source_fingerprints(conn, schema: str) -> dict[str, tuple[int, int]]:
+    """Row count and an order-independent fingerprint (sum of per-row MD5 hashes) of every source table."""
+    out = {}
+    for t in SOURCE_FOR_FINGERPRINT:
+        cols = [r[0] if not isinstance(r, dict) else list(r.values())[0] for r in conn.execute(
+            "SELECT COLUMN_NAME FROM EXA_ALL_COLUMNS WHERE COLUMN_SCHEMA = {s} AND COLUMN_TABLE = {t} "
+            "ORDER BY COLUMN_ORDINAL_POSITION", {"s": schema, "t": t}).fetchall()]
+        if not cols:
+            continue
+        row = " || '|' || ".join(f"COALESCE(CAST(\"{c}\" AS VARCHAR(4000)), '~')" for c in cols)
+        r = conn.execute(f"SELECT COUNT(*), COALESCE(SUM(TO_NUMBER(SUBSTR(HASH_MD5({row}), 1, 15), "
+                         f"'XXXXXXXXXXXXXXX')), 0) FROM {schema}.{t}").fetchone()
+        vals = list(r.values()) if isinstance(r, dict) else list(r)
+        out[t] = (int(vals[0]), int(vals[1]))
+    return out
+
+
+HISTORY = [
+    ("SIZING_HISTORY", "SIZING", "case_id, account_id, layer, balance_ref, retained_pr, retained_fifo, retained_lifo, "
+                                 "lower_amt, upper_amt, share_lo, share_hi, status"),
+    ("REVIEW_HISTORY", "REVIEW", "request_id, case_id, account_id, requested_scope, requested_amount, lower_amt, "
+                                 "upper_amt, classification, ratio_to_upper"),
+    ("CASE_SUMMARY_HISTORY", "CASE_SUMMARY", "case_id, request_status, requested_total, supported_lower, supported_upper, "
+                                             "whole_balance, excess, conservation_ok"),
+    ("TRAIL_HISTORY", "TRAIL_EDGES", "case_id, txn_id, from_acct, to_acct, layer, carried_pr, carried_fifo, carried_lifo, "
+                                     "terminal_state"),
+]
+
+
 def run_full(schema: str | None = None, cfg: Config | None = None, log=print, run_id: int | None = None,
-             on_step=None) -> dict:
+             on_step=None, mode: str = "python") -> dict:
+    """mode="python": steps orchestrated from Python. mode="lua": the whole analysis runs as one Exasol Lua
+    script (EXECUTE SCRIPT TRACEHOLD.RUN_ANALYSIS()); fingerprints, history and checksum are the same."""
     schema = (schema or db.SCHEMA).upper()
+    A = audit_schema(schema)
+    src = db.SRC_SCHEMA if schema == db.SCHEMA else schema
     cfg = cfg or Config()
+    cfg.orchestration = mode
     conn = db.connect()
     rid = run_id or start_run(conn, schema, cfg)
     t0 = time.perf_counter()
+    steps = [0]
 
     def record(no, step):
-        conn.execute(f"INSERT INTO {schema}.RUN_STEPS VALUES ({{r}}, {{n}}, {{s}}, {{ms}}, {{rows}})",
+        steps[0] = no
+        conn.execute(f"INSERT INTO {A}.RUN_STEPS VALUES ({{r}}, {{n}}, {{s}}, {{ms}}, {{rows}})",
                      {"r": rid, "n": no, "s": step["step"], "ms": step["ms"], "rows": step["rows"]})
         if on_step:
             on_step(no, step)
 
+    def fingerprint(phase):
+        t = time.perf_counter()
+        fps = source_fingerprints(conn, src)
+        for name, (n, fp) in fps.items():
+            conn.execute(f"INSERT INTO {A}.SOURCE_FINGERPRINTS VALUES ({{r}}, {{p}}, {{t}}, {{n}}, {{f}}, CURRENT_TIMESTAMP)",
+                         {"r": rid, "p": phase, "t": name, "n": n, "f": fp})
+        conn.commit()
+        record(steps[0] + 1, {"step": f"Fingerprint source data ({phase.lower()})", "ms": round((time.perf_counter() - t) * 1000, 1),
+                              "rows": sum(n for n, _ in fps.values()), "file": None})
+        return fps
+
     try:
-        eng = Engine(conn, schema, cfg, log=log, run_id=rid, on_step=record)
         log(f"[run {rid}] {schema} started")
-        layers = eng.full()
+        before = fingerprint("BEFORE")
+        if mode == "lua":
+            from app.lua_script import SCRIPT, install
+            install()
+            log(f"  ...  EXECUTE SCRIPT {SCRIPT}() (the whole analysis inside Exasol)")
+            rows = conn.execute(f"EXECUTE SCRIPT {SCRIPT}()").fetchall()
+            layers = 0
+            for r in rows:
+                vals = list(r.values()) if isinstance(r, dict) else list(r)
+                label, n, ms = vals[0], vals[1], float(vals[2])
+                layers += label.startswith("CF2/CF3 layer pass")
+                record(steps[0] + 1, {"step": label, "ms": round(ms, 1), "rows": None if n is None else int(n),
+                                      "file": step_file(label)})
+                log(f"  {label:42s} {ms / 1000:7.2f}s (Lua script)")
+        else:
+            eng = Engine(conn, schema, cfg, log=log, run_id=rid, on_step=record)
+            eng.full()
+            layers = eng.layers_used
+        t = time.perf_counter()
+        for hist, table, cols in HISTORY:
+            conn.execute(f"INSERT INTO {A}.{hist} SELECT {rid}, {cols} FROM {schema}.{table}")
+        conn.commit()
+        record(steps[0] + 1, {"step": "Save results to history", "ms": round((time.perf_counter() - t) * 1000, 1),
+                              "rows": None, "file": None})
+        after = fingerprint("AFTER")
+        if before != after:
+            changed = [k for k in before if before[k] != after.get(k)]
+            raise RuntimeError(f"Source data changed during the run: {', '.join(changed)}")
         checksum = results_checksum(conn, schema)
         dur = time.perf_counter() - t0
         conn.execute(
-            f"UPDATE {schema}.RUNS SET finished = CURRENT_TIMESTAMP, run_status = 'DONE', checksum = {{c}}, "
+            f"UPDATE {A}.RUNS SET finished = CURRENT_TIMESTAMP, run_status = 'DONE', checksum = {{c}}, "
             f"duration_s = {{d}} WHERE run_id = {{r}}", {"c": checksum, "d": dur, "r": rid})
-        log(f"[run {rid}] done in {dur:.1f}s, {layers} layer passes, {checksum[:23]}")
+        conn.commit()
+        log(f"[run {rid}] done in {dur:.1f}s, {layers} layer passes, {checksum[:23]}; source data unchanged")
         return {"run_id": rid, "duration_s": dur, "checksum": checksum, "layers": layers}
     except Exception as e:  # record the failure, then re-raise
-        conn.execute(f"UPDATE {schema}.RUNS SET finished = CURRENT_TIMESTAMP, run_status = 'FAILED', "
+        conn.execute(f"UPDATE {A}.RUNS SET finished = CURRENT_TIMESTAMP, run_status = 'FAILED', "
                      f"error_text = {{e}} WHERE run_id = {{r}}", {"e": str(e)[:1900], "r": rid})
+        conn.commit()
         raise
     finally:
         conn.close()
@@ -304,8 +423,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--schema", default=db.SCHEMA)
     ap.add_argument("--ref-rule", default="REQUEST")
+    ap.add_argument("--lua", action="store_true", help="run the whole analysis as one Exasol Lua script")
     a = ap.parse_args()
-    run_full(a.schema, Config(ref_rule=a.ref_rule))
+    run_full(a.schema, Config(ref_rule=a.ref_rule), mode="lua" if a.lua else "python")
 
 
 if __name__ == "__main__":

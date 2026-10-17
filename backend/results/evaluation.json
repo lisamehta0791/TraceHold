@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T14:57:08",
+  "generated_at": "2026-10-17T15:58:04",
   "note": "All results are on synthetic data and are not evidence of real-world performance.",
   "request_defects": [
     {
@@ -376,6 +376,14 @@
     "precision": 1.0,
     "recall": 0.9997,
     "definition": "A request target is over-broad when the requested amount exceeds the ground-truth upper bound (larger of the pro-rata and FIFO ledgers) by more than one rupee."
+  },
+  "determinism": {
+    "runs_compared": [
+      1,
+      2
+    ],
+    "same_snapshot": true,
+    "identical_results": true
   },
   "policy_simulation": {
     "hold_time": "each case's reference time (when the request was received)",

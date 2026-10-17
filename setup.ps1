@@ -122,6 +122,10 @@ if ($state -eq "DATA") {
     Step "Data and analysis results are already in Exasol (use -Reload to rebuild them)"
 }
 
+Step "Protected layout: source data read-only for the analysis, append-only history (safe to repeat)"
+& $Py -m app.secure
+if ($LASTEXITCODE -ne 0) { Fail "Setting up the protected layout failed (see above)." }
+
 Step "AI features: letters, AI tables, read-only question user (safe to repeat)"
 & $Py -m app.ai_setup
 if ($LASTEXITCODE -ne 0) { Write-Host "AI setup did not finish; TraceHold still works without the AI features." -ForegroundColor Yellow }

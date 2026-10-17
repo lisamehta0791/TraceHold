@@ -83,7 +83,7 @@ export default function Ask() {
             </div>
             {r.sql && <SqlBlock sql={r.sql} />}
             {r.columns.length > 0 && (
-              <div className="table-wrap" style={{ maxHeight: 360, marginTop: 12 }}>
+              <div className="table-wrap" tabIndex={0} role="region" aria-label="Scrollable table" style={{ maxHeight: 360, marginTop: 12 }}>
                 <table className="ledger">
                   <thead><tr>{r.columns.map((c) => <th key={c}>{c.toLowerCase().replace(/_/g, ' ')}</th>)}</tr></thead>
                   <tbody>{r.rows.slice(0, 200).map((row, k) => <tr key={k}>{row.map((v, j) => <td key={j} className="small mono">{fmtCell(v)}</td>)}</tr>)}</tbody>

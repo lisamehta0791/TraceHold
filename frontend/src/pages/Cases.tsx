@@ -105,7 +105,7 @@ function CaseList() {
         <div className="card"><RowsSkeleton rows={10} /></div>
       ) : (
         <div className="card" style={{ padding: 0, opacity: loading ? 0.6 : 1, transition: 'opacity .2s' }}>
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Scrollable table">
             <table className="ledger">
               <thead>
                 <tr>

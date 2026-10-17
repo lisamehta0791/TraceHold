@@ -182,7 +182,7 @@ def evaluate(q) -> dict:
                                       "upper bound (larger of the pro-rata and FIFO ledgers) by more than one rupee."}
 
     # ---------------------------------------------------------- determinism (AF6)
-    runs = q(f"SELECT run_id, checksum, snapshot_id FROM {S}.RUNS WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 2")
+    runs = q(f"SELECT run_id, checksum, snapshot_id FROM {db.AUDIT_SCHEMA}.RUNS WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 2")
     if len(runs) == 2:
         out["determinism"] = {"runs_compared": [runs[1]["run_id"], runs[0]["run_id"]],
                               "same_snapshot": runs[0]["snapshot_id"] == runs[1]["snapshot_id"],
@@ -257,7 +257,7 @@ def policy_simulation(q) -> dict:
 
 def main():
     import pyexasol
-    conn = db.connect(fetch_mapper=pyexasol.exasol_mapper)
+    conn = db.connect(admin=True, fetch_mapper=pyexasol.exasol_mapper)  # reads the answer key
 
     def q(sql, params=None):
         from decimal import Decimal

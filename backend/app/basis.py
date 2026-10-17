@@ -45,6 +45,8 @@ def rules(cfg: dict | None = None) -> list[dict]:
         {"rule": "Duplicate posting window", "value": f"{c['dup_window_s'] // 60} minutes", "why": "The same transfer posted twice within this window is counted once."},
         {"rule": "Clock-skew tolerance", "value": f"{c['skew_tol_s'] // 60} minutes", "why": "A credit stamped slightly before its debit (bank clocks differ) is put back in order."},
         {"rule": "Stop condition", "value": f"repeat until nothing changes (at most {c['max_iter']} passes)", "why": "Each pass follows the money one hop further."},
+        {"rule": "Source data", "value": "read only for the analysis",
+         "why": "Exasol refuses any change to the transactions, accounts and requests by the analysis user; every run fingerprints them before and after."},
         {"rule": "Conservation", "value": "retained + left + untraced + absorbed = loss", "why": "Checked for every case and method; a result that does not balance is flagged."},
     ]
 

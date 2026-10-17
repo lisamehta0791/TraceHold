@@ -6,7 +6,7 @@
   --paper-hi: #FAF4EA;
   --ink: #2A1B14;
   --ink-soft: #5B4636;
-  --ink-mute: #84705E;
+  --ink-mute: #695544;   /* 4.6:1 or better on every paper shade (WCAG AA) */
   --oxblood: #7A2232;
   --oxblood-deep: #5E1726;
   --terracotta: #C2553A;
@@ -770,3 +770,90 @@ li.open .basis-file svg { transform: rotate(-90deg); }
 
 .modal-foot { position: sticky; bottom: -24px; margin: 18px -28px -24px; padding: 12px 28px; justify-content: flex-end; flex-wrap: wrap; gap: 8px;
   background: rgba(244, 236, 223, 0.96); border-top: 1px solid var(--paper-3); backdrop-filter: blur(4px); }
+
+/* ================================================================ keyboard focus (WCAG 2.4.7) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; border-radius: 6px; }
+.lr-field input:focus-visible, .lr-field select:focus-visible, .ask-box input:focus-visible { outline-offset: 1px; }
+.skip-link { position: absolute; left: 12px; top: -48px; z-index: 300; background: var(--oxblood); color: #FBEFE2; padding: 8px 14px;
+  border-radius: 8px; font: 600 13px var(--f-ui); text-decoration: none; transition: top 0.2s; }
+.skip-link:focus { top: 12px; }
+
+/* ================================================================ proportionate hold draft */
+.hold { display: flex; flex-direction: column; gap: 12px; }
+.hold-top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.hold-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 760px) { .hold-sum { grid-template-columns: 1fr; } }
+.hold-sum > div { background: var(--paper-hi); border: 1px solid var(--paper-3); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.hold-sum span { font-size: 12px; color: var(--ink-mute); }
+.hold-sum b { font: 650 1.15rem var(--f-mono); color: var(--ink); }
+.hold-sum .good { background: #E9ECD6; border-color: #C9CF9F; }
+.hold-sum .good b { color: #46521E; }
+.hold-input { width: 130px; text-align: right; border: 1px solid var(--paper-3); border-radius: 8px; padding: 5px 8px; font: 13px var(--f-mono); background: #FFFDF8; }
+
+/* ================================================================ live re-trace */
+.retrace-figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 900px) { .retrace-figs { grid-template-columns: repeat(2, 1fr); } }
+.retrace-figs > div { background: var(--paper-2); border: 1px solid var(--paper-3); border-radius: 12px; padding: 9px 13px; display: flex; flex-direction: column; }
+.retrace-figs b { font: 650 1.15rem var(--f-mono); color: var(--ink); }
+.retrace-figs span { font-size: 12px; color: var(--ink-mute); }
+.retrace-figs .good { background: #E9ECD6; border-color: #C9CF9F; } .retrace-figs .good b { color: #46521E; }
+.retrace-figs .bad { background: #F8E1D7; border-color: #E9B7A4; } .retrace-figs .bad b { color: var(--terracotta); }
+
+/* ================================================================ refined visual system
+   A calm, document-like look: light page, near-white sheets with thin warm rules, small radii,
+   no drop shadows. Overrides the earlier, softer defaults. */
+:root {
+  --paper: #F6F0E6;
+  --paper-hi: #FFFCF7;
+  --paper-2: #EFE6D6;
+  --paper-3: #E0D2BC;
+  --radius: 9px;
+  --radius-sm: 6px;
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(42, 27, 20, 0.06), 0 8px 24px -16px rgba(42, 27, 20, 0.28);
+}
+body { background: var(--paper); }
+
+/* sheets */
+.card, .an-block { background: var(--paper-hi); border-color: var(--paper-3); box-shadow: none; }
+.card.hi { background: var(--paper-hi); }
+.an-block .ed-card, .an-block .acc-explain, .an-block .review-row, .an-block .cons-card, .an-block .lr,
+.an-block .sc-card, .an-block .verdict > div, .card .well { background: var(--paper); }
+.an-block .sc-card.on { background: var(--paper-hi); }
+.card.interactive:hover { transform: none; box-shadow: var(--shadow-md); }
+
+/* controls: rounded rectangles instead of pills */
+.btn { border-radius: 7px; box-shadow: none; }
+.btn:hover { box-shadow: none; filter: brightness(0.98); }
+.btn.icon { border-radius: 7px; }
+.seg { border-radius: 8px; background: var(--paper-2); border: 1px solid var(--paper-3); }
+.seg button, .seg .seg-on, .seg .seg-bg { border-radius: 6px; }
+.lp-links button { border-radius: 6px; }
+
+/* section headings in the app: a quiet rule under each */
+.page-head { padding-bottom: 16px; border-bottom: 1px solid var(--paper-3); margin-bottom: 22px; }
+.page-head h1 { letter-spacing: -0.015em; }
+
+/* tables: crisper headers */
+.ledger thead th { background: var(--paper-hi); color: var(--ink-soft); font-weight: 650; }
+.ledger tbody tr:hover td { background: rgba(224, 210, 188, 0.22); }
+
+/* landing: tighter rhythm, square-ish sheets */
+.lp-section { padding: 88px 0; }
+.lp-card, .lp-sc { border-radius: 10px; box-shadow: none; }
+.lp-step { min-height: 22vh; padding: 26px 0; }
+.lp-header.scrolled { background: rgba(246, 240, 230, 0.92); }
+.lp-sc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+.lp-sc-grid > div { display: flex; }
+.lp-sc-grid .lp-sc { width: 100%; min-height: 220px; }
+@media (max-width: 1000px) { .lp-sc-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .lp-sc-grid { grid-template-columns: 1fr; } }
+.lp-rules { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 48px; margin: 36px 0 0; }
+@media (max-width: 760px) { .lp-rules { grid-template-columns: 1fr; } }
+.lp-rule { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 18px 0; border-top: 1px solid var(--paper-3); }
+@media (max-width: 900px) { .lp-rule { grid-template-columns: 1fr; gap: 4px; } }
+.lp-rule dt { font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+.lp-rule dd { margin: 0; color: var(--ink-soft); font-size: 14.5px; line-height: 1.55; }
+
+.synthetic-tag { font: 600 11.5px var(--f-ui); letter-spacing: 0.04em; color: var(--oxblood); border: 1px solid rgba(122, 34, 50, 0.35); padding: 4px 9px; border-radius: 6px; }
+@media (max-width: 760px) { .synthetic-tag { display: none; } }

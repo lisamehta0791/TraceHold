@@ -242,7 +242,7 @@ def _log(out: dict, t0: float):
     try:
         c = db.connect()
         try:
-            c.execute(f"""INSERT INTO {db.SCHEMA}.ASK_LOG VALUES ({{i}}, {{q}}, {{m}}, {{t}}, {{s}}, {{n}}, {{a}}, {{f}},
+            c.execute(f"""INSERT INTO {db.AUDIT_SCHEMA}.ASK_LOG VALUES ({{i}}, {{q}}, {{m}}, {{t}}, {{s}}, {{n}}, {{a}}, {{f}},
                           {{mdl}}, {{ms}}, CURRENT_TIMESTAMP)""",
                       {"i": new_id(), "q": out["question"][:2000], "m": out["mode"], "t": out.get("template_id"),
                        "s": (out.get("sql") or "")[:20000] or None, "n": out.get("row_count", 0),

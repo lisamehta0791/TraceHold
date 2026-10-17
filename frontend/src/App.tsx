@@ -50,8 +50,9 @@ function AppShell() {
 
   return (
     <div className={`app ${collapsed ? 'collapsed' : ''}`}>
+      <a className="skip-link" href="#content">Skip to content</a>
       <NavRail collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-      <div className="main">
+      <main className="main" id="content" tabIndex={-1}>
         <TopBar />
         <AnimatePresence mode="wait" initial={false}>
           <Page key={location.pathname}>
@@ -74,10 +75,7 @@ function AppShell() {
             </ErrorBoundary>
           </Page>
         </AnimatePresence>
-      </div>
-      <div className="footer-badge" title="Every account, case and transaction in TraceHold is generated synthetically">
-        <b>●</b> Synthetic data
-      </div>
+      </main>
     </div>
   );
 }

@@ -17,11 +17,32 @@ can actually trace to the fraud**, as a range with the full calculation shown.
 
 ---
 
+## Screenshots
+
+![Landing page](docs/screenshots/01-landing.jpg)
+
+![Live analysis: the worked example, asked to hold vs supported by the records](docs/screenshots/02-live-analysis.jpg)
+
+| | |
+|---|---|
+| ![Reading a police letter with AI](docs/screenshots/03-police-letter-ai.jpg) | ![A stored case with every account the money reached](docs/screenshots/04-case.jpg) |
+| **Reading a police letter with AI:** every value quotes the letter and is checked by rules | **A stored case:** every account the money reached, with its range under each method |
+| ![Lien review queue](docs/screenshots/05-lien-review.jpg) | ![Ask the results through Exasol's MCP server](docs/screenshots/06-ask.jpg) |
+| **Lien review:** existing holds ranked for a person to look at again | **Ask the results:** plain-English questions, answered through Exasol's MCP server with the SQL shown |
+| ![Accuracy on the synthetic data](docs/screenshots/07-accuracy.jpg) | ![Try to break it: Exasol refuses every damaging statement](docs/screenshots/08-try-to-break-it.jpg) |
+| **Accuracy:** scored against an answer key the analysis never reads | **Try to break it:** Exasol refuses every attempt to change source data or history |
+
+---
+
 ## Contents
 
+- [Screenshots](#screenshots)
+- [The problem](#the-problem)
 - [Features](#features)
 - [AI at the edges](#ai-at-the-edges)
+- [Data protection and history](#data-protection-and-history)
 - [How it works](#how-it-works)
+- [Method](#method)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Requirements](#requirements)
@@ -36,6 +57,33 @@ can actually trace to the fraud**, as a range with the full calculation shown.
 - [Licence](#licence)
 
 ---
+
+## The problem
+
+An officer deciding how much of an account to hold in a cyber-fraud case can't tell how much of the victim's money
+actually reached that account: it is split, mixed with other money and moved on within minutes, and requests often
+arrive without the amount or the trail.
+
+| Person | What they need | What goes wrong today |
+|---|---|---|
+| Fraud victim | The stolen money held before it moves on | Recovery is slow and low |
+| Holder of an account the money passed through | A restriction limited to what is disputed | Whole-balance freezes, often without notice or a stated amount |
+| Officer at the police cyber cell | To state the amount and basis of a hold | Mixed funds make the disputed share unclear |
+| Bank nodal officer | To act lawfully and promptly | No way to check a requested amount, so blanket freezing is the safe default |
+| State oversight officer | To spot prolonged or disproportionate freezes | No consolidated view of how long holds last or how big they are |
+
+- **Too late for victims:** Bengaluru police reported ₹1,261 crore lost to online fraud up to August 2025, with only
+  about 4% traced and returned (Deccan Herald).
+- **Too broad for everyone else:** in August 2026 the Rajasthan High Court, hearing 105 petitions, found whole accounts
+  frozen for disputed sums sometimes under ₹100 and freezes continuing after closure (news report; binding in
+  Rajasthan only).
+- **A rule without a calculator:** the 2 January 2026 procedure for CFCFRMS (as analysed by LiveLaw) limits a lien to
+  the disputed sum. Applying it to a downstream account needs a defensible way to compute that sum, which is what
+  TraceHold provides.
+
+Not established: whether banks or agencies already size holds internally (only public descriptions were checked), or
+how many innocent account holders are affected nationally. The figures above cover different places and must not be
+combined.
 
 ## Features
 
@@ -57,12 +105,21 @@ Every core feature (CF) and additional feature (AF) from the project document, a
 | AF3 | Policy simulation | *System → Insights* |
 | AF4 | Speed-of-movement analysis | *System → Insights* |
 | AF5 | Oversight summary | *Lien review* (bottom) |
-| AF6 | Audit log and reproducible re-runs with checksums | *System → Runs & audit log* |
+| AF6 | Audit log and reproducible re-runs with checksums | *System → Runs & history* |
 | AF7 | **Governed questions over the results through Exasol's MCP server** | *Ask* |
 | AF8 | **Checked AI rewording of the account-holder explanation** | Case page → *Plain-language explanation* → *Reword with AI (checked)* |
 
-Also on every result: **What it is based on**, showing the rules applied, every SQL script that ran in Exasol
-(readable on the page), how many passes the trail needed, time per step and the run checksum.
+Beyond the document:
+
+| Feature | Where it is |
+|---|---|
+| **Draft a proportionate hold**: per account, a hold limited to the lower or upper end of the supported range (or chosen amounts), with a ready-to-send draft | Live analysis step ④; case page → *Scope review* |
+| **Live re-trace on the full ledger**: re-runs one case inside Exasol on all 2.4 million transactions in seconds and checks every figure against the stored result | Case page, top |
+| **The whole analysis as one Exasol script**: `EXECUTE SCRIPT TRACEHOLD.RUN_ANALYSIS()`, generated from the same SQL files; same checksum as the Python-orchestrated run | *System → Runs & history* |
+| **Benchmark and Exasol at work**: Exasol vs PostgreSQL on the same SQL, plus statements, rows, compression and the indexes Exasol created by itself, read from Exasol's system tables | *System → Performance* |
+| **Data protection and history**: source data read-only for the analysis, append-only history, proof by live refused statements | *System → Runs & history* |
+| **What it is based on**: rules applied, every SQL script that ran (readable on the page), passes, timings, checksum, source fingerprints | Every result |
+| **Accessibility**: WCAG 2.1 AA colour contrast, labels on every control, keyboard focus, skip link (checked with axe-core) | Everywhere |
 
 ## AI at the edges
 
@@ -76,6 +133,31 @@ Also on every result: **What it is based on**, showing the rules applied, every 
 The model (Groq, `openai/gpt-oss-120b`) runs with temperature 0 and a fixed seed. Every call is logged in Exasol
 (`AI_LOG`). Only synthetic data is ever sent. **With no API key, or with `TRACEHOLD_AI=off`, TraceHold works fully**
 and every figure is identical (tested).
+
+## Data protection and history
+
+The analysis can never damage the source data or the history, and **Exasol enforces this, not the application**.
+The app and the analysis connect as a limited database user, `TH_ENGINE`:
+
+| Schema | Holds | The analysis may |
+|---|---|---|
+| `TRACEHOLD_SRC` | Source data: transactions, accounts, cases, police requests, holds, letters | **read only** |
+| `TRACEHOLD` | Views of the source data, and the calculation tables rebuilt on every run | rebuild its own calculation tables |
+| `TH_PLAYGROUND` | Scratch area for live analyses | rebuild |
+| `TRACEHOLD_AUDIT` | Run log, results of every run, source fingerprints, every live analysis, AI log | **add rows only** |
+| `TRACEHOLD_GT` | The generator's answer key | no access (scenario labels only) |
+
+- **Why calculation tables are rebuilt:** every figure is recomputed from the untouched source data, so the same data
+  always gives the same checksum. The `DROP TABLE` statements in the SQL only ever touch these calculation tables.
+- **Proof, not promise:** *System → Runs & history → Try to break it* sends `DROP`, `DELETE`, `UPDATE`,
+  `TRUNCATE` and `INSERT` statements against the source data, the history and the answer key as `TH_ENGINE`, and
+  shows Exasol refusing each one ("insufficient privileges").
+- **Second guard:** the engine also refuses any statement aimed at those tables before it reaches the database
+  (`check_statement` in `backend/app/engine.py`), and a test checks every analysis SQL statement against it.
+- **History:** every run keeps its steps, configuration, checksum and its full results (account figures, reviewed
+  holds, case summaries, trail). Any two runs can be compared account by account. Every live analysis is kept too.
+- **Fingerprints:** each run records the row count and an MD5-based fingerprint of every source table before and
+  after, and fails if anything changed. Shown on every run and in *What it is based on*.
 
 ## How it works
 
@@ -96,7 +178,52 @@ and every figure is identical (tested).
    and compares it with the evidence. No row-by-row processing happens outside the database.
 4. **Serve**: the API reads the result tables; the website shows and explains them.
 
-The method, the AI boundary and the known limitations are in [docs/method.md](docs/method.md).
+The analysis steps are the numbered files in `database/` (prepare, trace, trail, sizing, requests, review, lien
+review, evidence). The trail is followed with a layer pass repeated until nothing changes, because Exasol Personal
+has no recursive queries.
+
+## Method
+
+**Methods for mixed money.** Once disputed money is mixed, which part of a balance is "disputed" depends on a
+convention, so three are computed side by side for every case:
+
+- **Pro-rata:** each outgoing payment carries the account's current disputed proportion. A running sum of
+  `ln(1 - share)` turns this sequential rule into window functions and one join.
+- **FIFO:** money leaves in the order it arrived. Each account has a cumulative-inflow axis; a payment consumes an
+  interval of it and carries the disputed part of that interval onward.
+- **LIFO (bounding case only):** the most recent money leaves first; used to show how sensitive a figure is.
+
+The supported range is the span of pro-rata and FIFO.
+
+**Shared rules.** Only completed postings count, and a completed reversal reduces the original transfer. Duplicate
+postings are dropped. A payment beyond the balance overdraws, and the next credit repays that first. Transfers
+carrying less than ₹1 of a case's money under a method are not followed further. Tracing stops at the case's
+reference time. Money returned to the victim, withdrawn as cash, taken as charges or sent outside the records leaves
+the trail. A debit that overdraws and is cured by a credit within 120 seconds is treated as clock skew and reordered.
+
+**Conservation check.** For every case and method: still in accounts + left the records + below ₹1 + repaid
+overdrafts = reported loss. Any failure is a calculation defect.
+
+| Status | When |
+|---|---|
+| Determined | Pro-rata and FIFO agree to the paisa and the records are complete |
+| Range | The methods disagree; both ends are reported |
+| Undeterminable | Missing opening balance, a gap in the records, or money received from such an account |
+| Out of observable scope | Money moved outside the records; a forwarded request is drafted |
+
+**Validation.** The generator (`backend/generator/ledger.py`) has an independent row-by-row implementation of the
+same three methods using explicit queues and stacks, and `backend/app/evaluation.py` compares the SQL engine with it.
+The AI letter reader is tuned on 24 development letters and measured on 60 held-out letters whose answer key it
+never reads.
+
+**Known limitations.**
+
+- The methods are estimation tools, not legal findings about who owns money.
+- Clock-skew correction is a heuristic; a records gap is detected only through the closing statement balance.
+- The lien review rules follow a commentary on the 2 January 2026 procedure and must be checked against the primary
+  text; they are configurable (`Config` in `backend/app/engine.py`).
+- All data is synthetic; AI results are measured on synthetic letters and fixed question sets, not real-world
+  accuracy.
 
 ## Tech stack
 
@@ -118,12 +245,13 @@ TraceHold/
 │   │   └── ai/         AI at the edges: Groq client and log, letter reading, questions via MCP, rewording
 │   ├── generator/      synthetic data, police letters, and the independent ground-truth ledger
 │   ├── benchmark/      benchmark harness
-│   ├── results/        evaluation, AI evaluation and benchmark results (JSON / Markdown)
+│   ├── results/        evaluation, AI evaluation and benchmark results (JSON)
 │   ├── tests/          pytest suite
 │   └── requirements.txt
-├── database/           every SQL script that runs inside Exasol (schema, analysis steps, AI tables and views)
+├── database/           every SQL script that runs inside Exasol (source, audit and answer-key schemas, analysis steps, AI)
 ├── frontend/           the website (src/pages, src/components)
-├── docs/method.md      method, rules, AI boundary and known limitations
+├── docs/               pitch deck and screenshots
+├── CONTRIBUTING.md     how to contribute
 ├── data/               generated datasets (created locally, not committed)
 ├── .env.example        settings template (copy to .env; never commit .env)
 ├── .venv-mcp/          Exasol's MCP server, installed by the AI setup (not committed)
@@ -180,13 +308,18 @@ cd ..
 python backend\generator\generate.py --scale 1.0 --seed 2026 --out data\L     # 2-3 minutes
 python backend\generator\letters.py data\L                                     # synthetic police letters
 cd backend
-..\.venv\Scripts\python -m app.load ..\data\L --fresh                         # about 1 minute
-..\.venv\Scripts\python -m app.engine                                         # 2-4 minutes
+..\.venv\Scripts\python -m app.load ..\data\L --fresh                         # about 1 minute; also sets up the protected layout
+..\.venv\Scripts\python -m app.engine                                         # 2-4 minutes (add --lua to run it as one Exasol script)
 ..\.venv\Scripts\python -m app.evaluation                                     # about 1 minute
 cd ..
 ```
 
 Use `--scale 0.2` for a smaller, faster dataset. The analysis prints each step as it runs.
+
+Loading creates the protected layout and the limited user `TH_ENGINE` automatically (its password is stored in
+`.env`). To set it up on an existing database, or to re-run the protection checks, run `python -m app.secure`
+from the `backend` folder; it moves existing tables only after verifying every copy. `--fresh` replaces the source
+data but never the history.
 
 **4. Set up the AI features (optional)**
 
@@ -265,27 +398,29 @@ website and starts the backend. Run it with `powershell -ExecutionPolicy Bypass 
 |---|---|
 | **Home** (`/`) | Read what TraceHold does and why. |
 | **Live analysis** | Pick a demo scenario, enter your own accounts and transfers, or **read a police letter with AI**. Press **Run analysis in Exasol**: the verdict comes first (asked to hold vs supported), then six explained steps ending with the rules and SQL used. |
-| **Cases** | Browse the 2,400 stored cases (*All cases*) or the totals (*At a glance*). Open a case, click an account, and open **How it was calculated** or **What it is based on**. **Open evidence packet** gives the printable report. |
+| **Cases** | Browse the 2,400 stored cases (*All cases*) or the totals (*At a glance*). Open a case to **re-trace it live** on the full ledger, click an account, and open **How it was calculated** or **What it is based on**. *Scope review* drafts a proportionate hold. **Open evidence packet** gives the printable report. |
 | **Lien review** | Filter existing holds by problem and open the case behind any hold. |
 | **Ask** | Ask a question in plain English or click a suggested one. The answer shows the SQL that ran through Exasol's MCP server and the rows. |
-| **System** | *Accuracy*, *Insights*, *Runs & audit log* (re-run the analysis in Exasol), *Benchmark*, *AI* (boundary, measured AI results, AI call log). |
+| **System** | *Accuracy* (engine and AI), *Insights*, *Runs & history* (re-run the analysis, compare runs, live analyses, AI calls, try to break the data protection) and *Performance* (benchmark, Exasol at work). |
 
 A short demo path: **Live analysis → Read a police letter (AI)** → pick *Split, merge and cash-out* and the
-*Hinglish message* → **Read the letter with AI** → confirm → **Run analysis in Exasol**. The missing contact and
-legal provision are flagged, the over-broad lien is shown, and every number links to its SQL.
+*Hinglish message* → **Read the letter with AI** → confirm → **Run analysis in Exasol**. The missing contact and legal
+provision are flagged, the over-broad lien is shown and a proportionate hold is drafted. Then open a stored case,
+re-trace it live on the full ledger, and try to break the data protection on *System → Runs & history*.
 
 ## Tests and evaluation
 
 ```powershell
 cd backend
-..\.venv\Scripts\python -m pytest tests          # 34 tests; database tests are skipped if Exasol is not running
+..\.venv\Scripts\python -m pytest tests          # 47 tests; database tests are skipped if Exasol is not running
 ..\.venv\Scripts\python -m app.evaluation        # accuracy against the generator's answer key
 ..\.venv\Scripts\python -m app.ai_eval           # AI features on held-out letters (needs GROQ_API_KEY; 20-30 min)
 ```
 
 The tests cover the worked example to the paisa, conservation on random cases, determinism (same case twice, same
 evidence packet twice), that the analysis never reads the answer key, that the calculation path never imports the
-AI package, the AI-off test, the read-only question user, and every rule check that runs after an AI call.
+AI package, the AI-off test, the read-only question user, every rule check that runs after an AI call, and that
+Exasol refuses the analysis user any change to source data, history or the answer key.
 
 ## Results on the synthetic data
 
@@ -316,9 +451,19 @@ AI features (`backend/results/ai_evaluation.json`; prompts tuned on 24 developme
 
 These figures describe synthetic data only. They are not evidence of real-world performance.
 
-**Benchmark.** `backend/results/benchmark.md` has Exasol timings for the same workloads at 241k and 958k
-transactions; the *System → Benchmark* page adds the full analysis run on all 2.4 million. A PostgreSQL comparison
-was planned, but both databases do not fit in this laptop's memory at the same time, so no comparison is claimed.
+**Benchmark** (`backend/results/benchmark.json`, *System → Performance*). Same SQL, same data, same laptop
+(Intel i5-1135G7, 8 GB RAM), each database alone in Docker with up to 4 GB of memory; PostgreSQL 16 tuned and given
+the indexes a reasonable engineer would add, Exasol on its defaults. Medians of repeated warm runs:
+
+| Workload | 241k transactions | 958k transactions |
+|---|---|---|
+| Full analysis (clean, balances, trace and size every case) | Exasol 27.8 s · PostgreSQL 38.9 s (1.4×) | **Exasol 43.8 s · PostgreSQL 343.6 s (7.8×)** |
+| One case on the prepared ledger | Exasol 5.0 s · PostgreSQL 1.1 s | Exasol 10.6 s · PostgreSQL 2.9 s |
+| Lien-review queue | Exasol 0.34 s · PostgreSQL 0.08 s | Exasol 0.57 s · PostgreSQL 0.18 s |
+
+Exasol wins the heavy analytical workload and the gap widens with the data (4× more data: Exasol 1.6× slower,
+PostgreSQL 8.8× slower). PostgreSQL is faster on small, quick queries; both answer those within seconds. The full
+2.4-million-transaction run on Exasol takes about 4 minutes. Only these workloads were measured; synthetic data only.
 
 ## API
 
@@ -336,6 +481,10 @@ The backend serves JSON under `/api` (interactive docs at http://127.0.0.1:8000/
 | `GET /api/lien-review`, `GET /api/oversight` | existing holds ranked for review |
 | `GET /api/evaluation`, `GET /api/policy-sim`, `GET /api/speed`, `GET /api/sensitivity` | accuracy and insights |
 | `GET /api/runs`, `POST /api/runs`, `GET /api/runs/{id}` | analysis runs (start one, follow its steps) |
+| `POST /api/cases/{id}/retrace` | live re-trace of one case on the full ledger |
+| `POST /api/cases/{id}/hold-draft`, `POST /api/hold-draft` | proportionate hold draft (stored case / live analysis) |
+| `GET /api/protection`, `GET /api/history/compare`, `GET /api/live-analyses` | protection proof, run comparison, live-analysis history |
+| `GET /api/exasol` | Exasol system statistics for the latest run |
 | `GET /api/ai/status`, `GET /api/ai/log`, `GET /api/ai/evaluation` | AI set-up, call log and measured results |
 | `GET /api/ai/letters`, `GET /api/cases/{id}/letter`, `POST /api/ai/extract`, `POST /api/ai/extract/{id}/confirm` | CF9 letters, reading and confirmation |
 | `GET /api/ai/ask/templates`, `POST /api/ai/ask` | AF7 questions through Exasol's MCP server |
@@ -346,6 +495,7 @@ The backend serves JSON under `/api` (interactive docs at http://127.0.0.1:8000/
 | What you see | Cause and fix |
 |---|---|
 | `npm run dev` prints proxy / `ECONNREFUSED` errors, pages say the API is not running | The backend is not running. Start it (see [Running TraceHold](#running-tracehold), step 2). |
+| Pages fail after updating TraceHold | Run `python -m app.secure` (from `backend`) once, then restart the backend. |
 | A page shows "This part of the page could not be shown" | The backend is older than the website. Restart the backend and reload the page. |
 | Page says "analysis results are not in Exasol yet" | Run the analysis once: `cd backend` then `..\.venv\Scripts\python -m app.engine`. |
 | Page says "an analysis run is rebuilding the results" | A run is in progress; the page reloads by itself when it finishes (about 3 minutes). |

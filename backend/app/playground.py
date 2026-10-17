@@ -165,7 +165,9 @@ def run(body: dict) -> dict:
     conn = db.connect(autocommit=False, fetch_mapper=pyexasol.exasol_mapper)
     S = SCHEMA
     try:
-        for stmt in db.load_sql("00_schema.sql", S=S, GT=S + "_GT"):
+        for stmt in db.load_sql("00_schema.sql", S=S):
+            if stmt.lstrip().upper().startswith("CREATE SCHEMA") and db.engine_ready():
+                continue  # the scratch schema is created (and owned by the analysis user) by app.secure
             conn.execute(stmt)
         conn.commit()
         victim_out = sum(float(t["amount"]) for _, t in transfers if t["from"].upper() == "VICTIM")
@@ -253,8 +255,32 @@ def run(body: dict) -> dict:
     finally:
         conn.close()
     total_ms = (time.perf_counter() - t0) * 1000
-    return _shape(body, names, openings, req, sizing, edges, cons, findings, status, review, timeline, steps,
-                  layers, round(victim_out, 2), ref_minute, load_ms, engine_ms, total_ms)
+    out = _shape(body, names, openings, req, sizing, edges, cons, findings, status, review, timeline, steps,
+                 layers, round(victim_out, 2), ref_minute, load_ms, engine_ms, total_ms)
+    _remember(body, out)
+    return out
+
+
+def _remember(body: dict, out: dict) -> None:
+    """Every live analysis is kept in the append-only history (inputs and the key results)."""
+    import json
+    if not db.engine_ready():
+        return
+    try:
+        summary = {"loss": out["loss"], "totals": out["totals"], "request_status": out["request_check"]["status"],
+                   "conservation_ok": all(c["passed"] for c in out["conservation"]),
+                   "accounts": [{k: a[k] for k in ("account_id", "lower", "upper", "status")} for a in out["accounts"]],
+                   "review": [{k: v[k] for k in ("account_id", "requested", "upper", "classification")} for v in out["review"]]}
+        title = (body.get("request") or {}).get("reference") or "Live analysis"
+        c = db.connect()
+        try:
+            c.execute(f"INSERT INTO {db.AUDIT_SCHEMA}.LIVE_ANALYSES VALUES ({{i}}, CURRENT_TIMESTAMP, {{t}}, {{inp}}, {{sm}}, {{ms}})",
+                      {"i": int(time.time() * 1_000_000), "t": str(title)[:200], "inp": json.dumps(body)[:200000],
+                       "sm": json.dumps(summary)[:20000], "ms": out["engine"]["engine_ms"]})
+        finally:
+            c.close()
+    except Exception:  # the history must never break an analysis
+        pass
 
 
 def _fl(v):

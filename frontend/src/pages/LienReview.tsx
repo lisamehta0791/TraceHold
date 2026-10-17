@@ -59,8 +59,8 @@ export default function LienReview() {
 
       {q.error ? <ErrorCard error={q.error} onRetry={q.reload} /> : !q.data ? <div className="card"><RowsSkeleton rows={10} /></div> : (
         <div className="card" style={{ padding: 0, opacity: q.loading ? 0.6 : 1, transition: 'opacity .2s' }}>
-          <div className="table-wrap">
-            <table className="ledger" style={{ minWidth: 1180 }}>
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="Scrollable table">
+            <table className="ledger lien-table" style={{ minWidth: 1020 }}>
               <thead><tr><th className="r">#</th><th>Account · case</th><th className="r">Held</th><th>Supported</th><th style={{ minWidth: 200 }}>Over-hold (held ÷ upper)</th>
                 <th className="r">Days held</th><th>90-day clock</th><th>Escalation</th><th>Closure</th><th>Flags</th></tr></thead>
               <tbody>
@@ -177,7 +177,7 @@ function LienRow({ it, rank, i }: { it: LienItem; rank: number; i: number }) {
       <td>{it.band === 'UNDER_50K' && it.days_to_90 !== null ? <Ring days={it.days_to_90} /> : <span className="tiny mute2">≥ ₹50k</span>}</td>
       <td className="small" style={{ whiteSpace: 'nowrap' }}>{dateOnly(it.escalation_date)}</td>
       <td><Chip color={CLOSURE_COLOR[it.closure_status] ?? C.clay}>{humanize(it.closure_status)}</Chip></td>
-      <td style={{ minWidth: 190 }}><div className="row wrap" style={{ gap: 4 }}>{it.flags.map((f) => <span key={f} className="chip plain" style={{ fontSize: 10.5 }}>{humanize(f)}</span>)}</div></td>
+      <td style={{ minWidth: 128, maxWidth: 150 }}><div className="row wrap" style={{ gap: 3 }}>{it.flags.map((f) => <span key={f} className="chip plain" style={{ fontSize: 10.5 }}>{humanize(f)}</span>)}</div></td>
     </motion.tr>
   );
 }

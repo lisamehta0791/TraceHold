@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-15T20:05:15",
+  "generated_at": "2026-10-17T17:18:34",
   "hardware": {
     "platform": "Windows-11-10.0.26300-SP0",
     "machine": "AMD64",
@@ -10,7 +10,8 @@
     "containers": "Both databases run in Docker Desktop (WSL2) on this machine with a 4 GB memory limit each."
   },
   "versions": {
-    "Exasol": "2026.2.0-nano.3"
+    "Exasol": "2026.2.0-nano.3",
+    "PostgreSQL": "16.4 (Debian 16.4-1.pgdg120+2)"
   },
   "settings": {
     "postgresql": [
@@ -172,6 +173,152 @@
       "median_s": 10.606,
       "min_s": 6.378,
       "max_s": 11.4
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "S",
+      "workload": "LOAD",
+      "rows": 241125,
+      "runs": 1,
+      "times_s": [
+        3.187
+      ],
+      "cold_s": 3.187,
+      "median_s": 3.187,
+      "min_s": 3.187,
+      "max_s": 3.187
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "S",
+      "workload": "W2",
+      "rows": 241125,
+      "runs": 3,
+      "times_s": [
+        54.151,
+        37.653,
+        40.213
+      ],
+      "cold_s": 54.151,
+      "median_s": 38.933,
+      "min_s": 37.653,
+      "max_s": 40.213
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "S",
+      "workload": "W3",
+      "rows": 241125,
+      "runs": 5,
+      "times_s": [
+        0.051,
+        0.065,
+        0.121,
+        0.079,
+        0.077
+      ],
+      "cold_s": 0.051,
+      "median_s": 0.078,
+      "min_s": 0.065,
+      "max_s": 0.121
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "S",
+      "workload": "W1",
+      "rows": 241125,
+      "cases": [
+        227,
+        34,
+        35,
+        180,
+        19
+      ],
+      "runs": 5,
+      "times_s": [
+        7.247,
+        2.896,
+        1.075,
+        1.04,
+        1.025
+      ],
+      "cold_s": 7.247,
+      "median_s": 1.058,
+      "min_s": 1.025,
+      "max_s": 2.896
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "M",
+      "workload": "LOAD",
+      "rows": 958023,
+      "runs": 1,
+      "times_s": [
+        14.631
+      ],
+      "cold_s": 14.631,
+      "median_s": 14.631,
+      "min_s": 14.631,
+      "max_s": 14.631
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "M",
+      "workload": "W2",
+      "rows": 958023,
+      "runs": 3,
+      "times_s": [
+        145.084,
+        189.861,
+        497.382
+      ],
+      "cold_s": 145.084,
+      "median_s": 343.621,
+      "min_s": 189.861,
+      "max_s": 497.382
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "M",
+      "workload": "W3",
+      "rows": 958023,
+      "runs": 5,
+      "times_s": [
+        0.14,
+        0.188,
+        0.157,
+        0.168,
+        0.208
+      ],
+      "cold_s": 0.14,
+      "median_s": 0.178,
+      "min_s": 0.157,
+      "max_s": 0.208
+    },
+    {
+      "engine": "PostgreSQL",
+      "tier": "M",
+      "workload": "W1",
+      "rows": 958023,
+      "cases": [
+        911,
+        924,
+        899,
+        658,
+        276
+      ],
+      "runs": 5,
+      "times_s": [
+        3.805,
+        5.472,
+        3.72,
+        2.167,
+        1.943
+      ],
+      "cold_s": 3.805,
+      "median_s": 2.943,
+      "min_s": 1.943,
+      "max_s": 5.472
     }
   ]
 }

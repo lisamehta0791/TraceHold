@@ -273,7 +273,7 @@ def _store(conn, extraction_id, doc_id, fields, mdl):
                          i["span"][:2000], i["start"], i["end"], f["status"] if f["field"] != "targets" else ("VERIFIED" if i["verified"] else "UNVERIFIED"),
                          "; ".join(c["check"] for c in i["checks"] if not c["ok"])[:2000], mdl, PROMPT_VERSION))
     for r in rows:
-        conn.execute(f"""INSERT INTO {db.SCHEMA}.EXTRACTION_RESULTS VALUES ({{a}}, {{b}}, {{c}}, {{d}}, {{e}}, {{f}}, {{g}},
+        conn.execute(f"""INSERT INTO {db.AUDIT_SCHEMA}.EXTRACTION_RESULTS VALUES ({{a}}, {{b}}, {{c}}, {{d}}, {{e}}, {{f}}, {{g}},
                          {{h}}, {{i}}, {{j}}, {{k}}, CURRENT_TIMESTAMP)""",
                      dict(zip("abcdefghijk", r)))
     conn.commit()
@@ -284,7 +284,7 @@ def confirm(extraction_id: int, fields: dict, confirmed_by: str) -> dict:
     conn = db.connect()
     try:
         stored = {}
-        for r in conn.execute(f"SELECT field_name, value_text, status FROM {db.SCHEMA}.EXTRACTION_RESULTS "
+        for r in conn.execute(f"SELECT field_name, value_text, status FROM {db.AUDIT_SCHEMA}.EXTRACTION_RESULTS "
                               f"WHERE extraction_id = {{e}}", {"e": extraction_id}).fetchall():
             r = {k.lower(): v for k, v in r.items()}
             stored.setdefault(r["field_name"], []).append(r)
@@ -300,7 +300,7 @@ def confirm(extraction_id: int, fields: dict, confirmed_by: str) -> dict:
             corrected = norm_text(given) != norm_text(before) and not (
                 name == "stated_amount" and parse_amount(given) is not None and before and parse_amount(before) == parse_amount(given))
             n_corr += corrected
-            conn.execute(f"""INSERT INTO {db.SCHEMA}.EXTRACTION_CONFIRMATIONS VALUES ({{e}}, {{f}}, {{v}}, {{c}}, {{b}},
+            conn.execute(f"""INSERT INTO {db.AUDIT_SCHEMA}.EXTRACTION_CONFIRMATIONS VALUES ({{e}}, {{f}}, {{v}}, {{c}}, {{b}},
                              CURRENT_TIMESTAMP)""", {"e": extraction_id, "f": name, "v": given[:2000] or None,
                                                      "c": corrected, "b": (confirmed_by or "reviewer")[:100]})
         conn.commit()

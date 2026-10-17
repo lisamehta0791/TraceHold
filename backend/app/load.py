@@ -1,7 +1,11 @@
 """Load a generated dataset into Exasol Personal.
 
-    python -m app.load data/L                      # into TRACEHOLD / TRACEHOLD_GT
-    python -m app.load data/S --schema LL_S --gt-schema LL_S_GT
+    python -m app.load data/L                      # into TRACEHOLD_SRC / TRACEHOLD_GT
+    python -m app.load data/S --schema LL_S --gt-schema LL_S_GT   (benchmark tiers: plain schemas)
+
+Source data is written by the administrator into TRACEHOLD_SRC, which the
+analysis may only read. --fresh replaces the source data; the run history in
+TRACEHOLD_AUDIT is never touched.
 """
 from __future__ import annotations
 
@@ -33,13 +37,19 @@ GT_TABLES = [
 
 def load(data_dir: Path, schema: str, gt_schema: str, drop_runs: bool = False, log=print):
     t0 = time.time()
-    conn = db.connect()
+    protected = schema.upper() in (db.SCHEMA, db.SRC_SCHEMA)
+    if protected:
+        schema = db.SRC_SCHEMA
+    conn = db.connect(admin=True)
     conn.execute("ALTER SESSION SET NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS'")
     conn.execute("ALTER SESSION SET NLS_DATE_FORMAT='YYYY-MM-DD'")
     if drop_runs:
         conn.execute(f"DROP SCHEMA IF EXISTS {schema} CASCADE")
-    for stmt in db.load_sql("00_schema.sql", S=schema, GT=gt_schema):
+    for stmt in db.load_sql("00_schema.sql", S=schema) + db.load_sql("02_ground_truth.sql", GT=gt_schema):
         conn.execute(stmt)
+    if not protected:  # benchmark tiers keep their run log next to their data
+        for stmt in db.load_sql("01_audit.sql", A=schema):
+            conn.execute(stmt)
     for fname, table in TABLES:
         _import(conn, data_dir / fname, schema, table, log)
     for fname, table in GT_TABLES:
@@ -55,7 +65,12 @@ def load(data_dir: Path, schema: str, gt_schema: str, drop_runs: bool = False, l
     }
     conn.execute(f"TRUNCATE TABLE {schema}.DATASET_INFO")
     conn.import_from_iterable(list(info.items()), (schema, "DATASET_INFO"))
+    conn.commit()
     log(f"[load] {schema} loaded in {time.time() - t0:.1f}s")
+    if protected:
+        from app.secure import ensure_layout
+        ensure_layout(conn=None, log=log)
+        log(f"[load] protected layout ready: the analysis reads {db.SRC_SCHEMA} through views in {db.SCHEMA}")
     conn.close()
 
 
@@ -77,7 +92,7 @@ def main():
     ap.add_argument("data_dir")
     ap.add_argument("--schema", default=db.SCHEMA)
     ap.add_argument("--gt-schema", default=db.GT_SCHEMA)
-    ap.add_argument("--fresh", action="store_true", help="drop the schema (including run history) first")
+    ap.add_argument("--fresh", action="store_true", help="replace the source data (the run history is kept)")
     a = ap.parse_args()
     load(Path(a.data_dir), a.schema.upper(), a.gt_schema.upper(), a.fresh)
 

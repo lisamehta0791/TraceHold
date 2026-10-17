@@ -42,7 +42,7 @@ def _same(field: str, got, truth: str) -> bool:
 
 def eval_cf9(limit: int | None, log) -> dict:
     from app.ai.extract import extract
-    conn = db.connect()
+    conn = db.connect(admin=True)  # reads the answer key
     docs = conn.execute(f"SELECT doc_id, case_id, body FROM {db.SCHEMA}.REQUEST_DOCUMENTS WHERE split = 'HELDOUT' ORDER BY doc_id").fetchall()
     truth = {}
     for r in conn.execute(f"SELECT doc_id, field_name, true_value FROM {db.GT_SCHEMA}.LETTER_TRUTH").fetchall():
@@ -151,7 +151,7 @@ def _norm_cell(v):
 
 def eval_af7(log) -> dict:
     from app.ai.ask import AskRejected, ask
-    conn = db.connect(fetch_dict=False)
+    conn = db.connect(admin=True, fetch_dict=False)
     items, correct, fid_fail = [], 0, 0
     for q, sql, key in QUESTIONS:
         exp = conn.execute(sql).fetchall()
@@ -193,7 +193,7 @@ def eval_af7(log) -> dict:
 def eval_af8(n: int, log) -> dict:
     from app import main
     from app.ai.reword import reword
-    conn = db.connect()
+    conn = db.connect(admin=True)
     rows = conn.execute(f"""SELECT v.case_id, v.account_id FROM {db.SCHEMA}.REVIEW v
                             JOIN {db.SCHEMA}.SIZING z ON z.case_id = v.case_id AND z.account_id = v.account_id
                             WHERE z.status IN ('RANGE', 'DETERMINED', 'UNDETERMINABLE')

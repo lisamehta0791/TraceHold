@@ -37,7 +37,7 @@ def load_letters(conn, data_dir: Path) -> int:
         sys.path.insert(0, str(db.BACKEND / "generator"))
         from letters import build  # noqa: E402
         build(data_dir, 24, 60)
-    S, GT = db.SCHEMA, db.GT_SCHEMA
+    S, GT = db.SRC_SCHEMA, db.GT_SCHEMA  # letters are source data
     rows = list(csv.DictReader(open(docs, encoding="utf-8")))
     conn.execute(f"TRUNCATE TABLE {S}.REQUEST_DOCUMENTS")
     conn.import_from_iterable(
@@ -105,11 +105,10 @@ def install_mcp_server() -> str:
 
 def main():
     print(f"[ai] MCP server: {install_mcp_server()}")
-    conn = db.connect()
+    conn = db.connect(admin=True)
     try:
-        for stmt in db.load_sql("90_ai.sql", S=db.SCHEMA, GT=db.GT_SCHEMA, R=RESULTS_SCHEMA):
-            conn.execute(stmt)
-        conn.commit()
+        from app.secure import ensure_layout
+        ensure_layout()
         print(f"[ai] tables and {RESULTS_SCHEMA} views ready")
         n = load_letters(conn, db.ROOT / "data" / "L")
         conn.commit()

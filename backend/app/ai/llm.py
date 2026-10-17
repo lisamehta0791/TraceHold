@@ -46,7 +46,7 @@ def _log(feature, mdl, prompt_version, input_ref, input_text, output_text, ms, s
         with _log_lock:
             c = db.connect()
             try:
-                c.execute(f"""INSERT INTO {db.SCHEMA}.AI_LOG VALUES ({{i}}, {{f}}, {{m}}, {{p}}, {{r}}, {{it}}, {{ot}},
+                c.execute(f"""INSERT INTO {db.AUDIT_SCHEMA}.AI_LOG VALUES ({{i}}, {{f}}, {{m}}, {{p}}, {{r}}, {{it}}, {{ot}},
                               {{t}}, {{ms}}, {{s}}, CURRENT_TIMESTAMP)""",
                           {"i": new_id(), "f": feature, "m": mdl, "p": prompt_version, "r": (input_ref or "")[:200],
                            "it": input_text[:200000], "ot": (output_text or "")[:200000], "t": TEMPERATURE,

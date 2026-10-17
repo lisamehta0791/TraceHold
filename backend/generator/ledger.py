@@ -5,7 +5,7 @@ An independent, row-by-row implementation of the three allocation conventions
 the set-based SQL engine (explicit lot queues and stacks instead of interval
 arithmetic), so that agreement between the two is meaningful evidence.
 
-Shared rules (stated in docs/method.md):
+Shared rules (stated in the README, under Method):
   * transactions are applied in (timestamp, sequence) order; only COMPLETED
     postings count; a completed reversal reduces the original transfer;
   * a debit larger than the balance overdraws; a later credit first repays the

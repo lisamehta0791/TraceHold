@@ -25,6 +25,7 @@ from app.engine import SOFTWARE_VERSION, Config, run_full
 
 S = db.SCHEMA
 GT = db.GT_SCHEMA
+A = db.AUDIT_SCHEMA
 ROOT = db.ROOT
 
 app = FastAPI(title="TraceHold API", version=SOFTWARE_VERSION)
@@ -126,7 +127,8 @@ def table_exists(name: str, schema: str = S) -> bool:
     # playground's schema changes.
     if (schema, name) in _known_tables:
         return True
-    found = bool(q1("SELECT 1 AS X FROM EXA_ALL_TABLES WHERE TABLE_SCHEMA = {s} AND TABLE_NAME = {t}",
+    found = bool(q1("SELECT 1 AS X FROM EXA_ALL_TABLES WHERE TABLE_SCHEMA = {s} AND TABLE_NAME = {t} "
+                    "UNION ALL SELECT 1 FROM EXA_ALL_VIEWS WHERE VIEW_SCHEMA = {s} AND VIEW_NAME = {t}",
                     {"s": schema, "t": name}))
     if found:
         _known_tables.add((schema, name))
@@ -136,7 +138,7 @@ def table_exists(name: str, schema: str = S) -> bool:
 def _running_run():
     """A run started in the last 3 hours that has not finished (tables are being rebuilt)."""
     try:
-        r = q1(f"SELECT run_id, started FROM {S}.RUNS WHERE run_status = 'RUNNING' "
+        r = q1(f"SELECT run_id, started FROM {A}.RUNS WHERE run_status = 'RUNNING' "
                f"AND started > ADD_HOURS(CURRENT_TIMESTAMP, -3) ORDER BY run_id DESC LIMIT 1")
         return r
     except Exception:
@@ -170,7 +172,7 @@ def cached(key: str, fn, ttl: float = 3600.0):
 
 def _latest_run_id():
     try:
-        r = q1(f"SELECT MAX(run_id) AS r FROM {S}.RUNS WHERE run_status = 'DONE'")
+        r = q1(f"SELECT MAX(run_id) AS r FROM {A}.RUNS WHERE run_status = 'DONE'")
         return r["r"] if r else None
     except Exception:
         return None
@@ -213,7 +215,7 @@ def _overview():
     counts = {}
     for t in ("ACCOUNTS", "TRANSACTIONS", "CASES", "REQUESTS", "REQUEST_TARGETS", "RESTRAINTS", "INSTITUTIONS"):
         counts[t.lower()] = q1(f"SELECT COUNT(*) AS n FROM {S}.{t}")["n"]
-    run = q1(f"SELECT run_id, started, finished, run_status AS status, duration_s FROM {S}.RUNS "
+    run = q1(f"SELECT run_id, started, finished, run_status AS status, duration_s FROM {A}.RUNS "
              f"WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1")
     t = q1(f"""SELECT SUM(loss) AS reported_loss, SUM(whole_balance) AS whole_balance_locked,
                       SUM(requested_total) AS requested_total, SUM(supported_lower) AS supported_lower,
@@ -507,7 +509,7 @@ def _packet(case_id: int) -> dict:
     d = _case_detail(case_id)
     ev = q(f"""SELECT account_id, figure, figure_value, in_txns, out_txns, n_records, assumption
                FROM {S}.EVIDENCE_ITEMS WHERE case_id = {{c}} ORDER BY account_id, figure""", {"c": case_id})
-    run = q1(f"SELECT run_id, snapshot_id, software_version, config_json, checksum, finished FROM {S}.RUNS "
+    run = q1(f"SELECT run_id, snapshot_id, software_version, config_json, checksum, finished FROM {A}.RUNS "
              f"WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1") or {}
     evidence = [{"account_id": e["account_id"], "figure": e["figure"], "value": f(e["figure_value"]),
                  "source_txn_ids": [x for x in (e["in_txns"] or "").split(",") if x]
@@ -592,6 +594,99 @@ def case_explain(case_id: int, account_id: str):
     return explain_account(rows, account_id, sizing, label=label, minute=lambda e: texts.ts(e).replace("T", " ")[:16])
 
 
+# ---------------------------------------------------------------- Exasol at work (system statistics)
+@app.get("/api/exasol")
+def exasol_at_work():
+    """What Exasol did, read from its own system tables (read-only)."""
+    def tables(schema):
+        return q(f"""SELECT t.TABLE_NAME AS name, t.TABLE_ROW_COUNT AS row_count, s.RAW_OBJECT_SIZE AS raw, s.MEM_OBJECT_SIZE AS mem
+                     FROM EXA_DBA_TABLES t JOIN EXA_DBA_OBJECT_SIZES s
+                       ON s.OBJECT_NAME = t.TABLE_NAME AND s.ROOT_NAME = t.TABLE_SCHEMA AND s.OBJECT_TYPE = 'TABLE'
+                     WHERE t.TABLE_SCHEMA = {{s}} ORDER BY s.RAW_OBJECT_SIZE DESC""", {"s": schema})
+    src = tables(db.SRC_SCHEMA)
+    work = tables(db.SCHEMA)
+    idx = q(f"""SELECT INDEX_SCHEMA AS sch, INDEX_TABLE AS tbl, INDEX_TYPE AS kind, MEM_OBJECT_SIZE AS mem, REMARKS AS remarks
+                FROM EXA_DBA_INDICES WHERE INDEX_SCHEMA IN ({{a}}, {{b}}) ORDER BY MEM_OBJECT_SIZE DESC""",
+            {"a": db.SRC_SCHEMA, "b": db.SCHEMA})
+    size = q1("SELECT RAW_OBJECT_SIZE AS raw_gib, MEM_OBJECT_SIZE AS mem_gib, RECOMMENDED_DB_RAM_SIZE AS ram_gib, "
+              "STORAGE_SIZE AS storage_gib, OBJECT_COUNT AS objects FROM EXA_STATISTICS.EXA_DB_SIZE_LAST_DAY "
+              "ORDER BY MEASURE_TIME DESC LIMIT 1")
+    run = q1(f"SELECT run_id, started, finished FROM {A}.RUNS WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1")
+    stats = None
+    if run:
+        # the statement log is kept in UTC (SYSTIMESTAMP); the run log in the database's time zone
+        window = {"r": run["run_id"]}
+        agg = q(f"""WITH w AS (SELECT ADD_SECONDS(started, -SECONDS_BETWEEN(CURRENT_TIMESTAMP, SYSTIMESTAMP)) AS t0,
+                                      ADD_SECONDS(finished, -SECONDS_BETWEEN(CURRENT_TIMESTAMP, SYSTIMESTAMP)) AS t1
+                               FROM {A}.RUNS WHERE run_id = {{r}})
+                    SELECT s.COMMAND_NAME AS command, COUNT(*) AS n, SUM(s.DURATION) AS seconds, SUM(s.ROW_COUNT) AS row_count,
+                           MAX(s.TEMP_DB_RAM_PEAK) AS temp_peak_mib
+                    FROM EXA_STATISTICS.EXA_SQL_LAST_DAY s, w
+                    WHERE s.START_TIME BETWEEN w.t0 AND w.t1
+                    GROUP BY s.COMMAND_NAME ORDER BY seconds DESC""", window)
+        stats = {"run_id": run["run_id"], "by_command": agg,
+                 "statements": int(sum(int(a["n"]) for a in agg)),
+                 "seconds": round(sum(float(a["seconds"] or 0) for a in agg), 1),
+                 "rows": int(sum(int(a["row_count"] or 0) for a in agg)),
+                 "temp_peak_mib": max((float(a["temp_peak_mib"] or 0) for a in agg), default=0)}
+    by_schema = {}
+    for i in idx:
+        by_schema[i["sch"]] = by_schema.get(i["sch"], 0) + 1
+    return {"version": q1("SELECT PARAM_VALUE AS v FROM EXA_METADATA WHERE PARAM_NAME = 'databaseProductVersion'")["v"],
+            "db_size": size, "source_tables": src, "work_tables": work[:12],
+            "indexes": {"total": len(idx), "by_schema": by_schema, "created_by_tracehold": 0, "largest": idx[:12]},
+            "last_run": stats}
+
+
+# ---------------------------------------------------------------- live re-trace on the full ledger
+@app.post("/api/cases/{case_id}/retrace")
+def case_retrace(case_id: int):
+    require_results()
+    from app.retrace import retrace
+    try:
+        return retrace(case_id)
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+
+
+# ---------------------------------------------------------------- proportionate hold draft
+def _hold_response(case_ref, request, items, basis, overrides, ref_time):
+    basis = basis if basis in texts.BASIS_LABEL else "UPPER"
+    plan = texts.hold_plan(items, basis, overrides)
+    sized = [p for p in plan if p["proposed"] is not None]
+    return {"basis": basis, "plan": plan,
+            "totals": {"requested": round(sum(float(p.get("requested") or 0) for p in sized), 2),
+                       "proposed": round(sum(p["proposed"] for p in sized), 2),
+                       "released": round(sum(float(p.get("released") or 0) for p in sized), 2),
+                       "not_sized": len(plan) - len(sized)},
+            "text": texts.hold_draft(case_ref, request, plan, basis, ref_time)}
+
+
+@app.post("/api/cases/{case_id}/hold-draft")
+def case_hold_draft(case_id: int, body: dict):
+    """Draft a proportionate hold instruction for the accounts named in the case's request."""
+    require_results()
+    case = _case_core(case_id)
+    rows = q(f"""SELECT v.account_id, v.requested_amount, s.balance_ref, s.lower_amt, s.upper_amt, s.status
+                 FROM {S}.REVIEW v JOIN {S}.SIZING s ON s.case_id = v.case_id AND s.account_id = v.account_id
+                 WHERE v.case_id = {{c}} AND v.request_id = {{r}} ORDER BY v.layer, v.account_id""",
+             {"c": case_id, "r": case["request_id"] or -1})
+    items = [{"account_id": r["account_id"], "requested": f(r["requested_amount"]), "balance": f(r["balance_ref"]),
+              "lower": f(r["lower_amt"]), "upper": f(r["upper_amt"]), "status": r["status"]} for r in rows]
+    req = q1(f"SELECT issuing_officer, agency FROM {S}.REQUESTS WHERE request_id = {{r}}", {"r": case["request_id"] or -1})
+    return _hold_response(case["case_ref"], req, items, body.get("basis"), body.get("overrides"),
+                          texts.ts_h(case["ref_epoch"]))
+
+
+@app.post("/api/hold-draft")
+def hold_draft(body: dict):
+    """Same draft for a live analysis (the figures come from the analysis result shown on the page)."""
+    items = [{"account_id": str(i.get("account_id"))[:20], "requested": i.get("requested"), "balance": i.get("balance"),
+              "lower": i.get("lower"), "upper": i.get("upper"), "status": i.get("status")} for i in (body.get("items") or [])][:200]
+    return _hold_response(str(body.get("case_ref") or "LIVE-ANALYSIS")[:60], body.get("request") or {}, items,
+                          body.get("basis"), body.get("overrides"), str(body.get("ref_time") or "the reference time")[:40])
+
+
 # ---------------------------------------------------------------- AI at the edges (CF9, AF7, AF8)
 def _ai_call(fn, *a, **kw):
     """Runs an AI feature and turns its failures into clear HTTP errors."""
@@ -627,10 +722,10 @@ def ai_status():
     out = {"llm": status(), "mcp": mcp.status(), "reader_ready": bool(os.environ.get("TRACEHOLD_ASK_PASSWORD"))}
     try:
         out["counts"] = q1(f"""SELECT (SELECT COUNT(*) FROM {S}.REQUEST_DOCUMENTS) AS letters,
-                                      (SELECT COUNT(DISTINCT extraction_id) FROM {S}.EXTRACTION_RESULTS) AS extractions,
-                                      (SELECT COUNT(*) FROM {S}.EXTRACTION_CONFIRMATIONS) AS confirmations,
-                                      (SELECT COUNT(*) FROM {S}.AI_LOG) AS ai_calls,
-                                      (SELECT COUNT(*) FROM {S}.ASK_LOG) AS questions""")
+                                      (SELECT COUNT(DISTINCT extraction_id) FROM {A}.EXTRACTION_RESULTS) AS extractions,
+                                      (SELECT COUNT(*) FROM {A}.EXTRACTION_CONFIRMATIONS) AS confirmations,
+                                      (SELECT COUNT(*) FROM {A}.AI_LOG) AS ai_calls,
+                                      (SELECT COUNT(*) FROM {A}.ASK_LOG) AS questions""")
     except Exception:
         out["counts"] = None
     return out
@@ -709,11 +804,11 @@ def ai_reword(case_id: int, account_id: str):
 @app.get("/api/ai/log")
 def ai_log(limit: int = Query(30, le=200)):
     _heal_ai_tables()
-    if not table_exists("AI_LOG"):
+    if not table_exists("AI_LOG", A):
         return {"calls": []}
     rows = q(f"""SELECT call_id, feature, model, prompt_version, input_ref, ms, status, created,
                         SUBSTR(output_text, 1, 300) AS output_preview
-                 FROM {S}.AI_LOG ORDER BY created DESC LIMIT {{n!d}}""", {"n": limit})
+                 FROM {A}.AI_LOG ORDER BY created DESC LIMIT {{n!d}}""", {"n": limit})
     return {"calls": rows}
 
 
@@ -742,9 +837,9 @@ def basis_sql(name: str, where: str = "cases"):
 def case_basis(case_id: int):
     require_results()
     from app import basis
-    run = q1(f"SELECT run_id, started, duration_s, checksum, config_json FROM {S}.RUNS "
+    run = q1(f"SELECT run_id, started, duration_s, checksum, config_json FROM {A}.RUNS "
              f"WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1")
-    steps = q(f"SELECT step_name AS step, ms, row_count AS \"rows\" FROM {S}.RUN_STEPS WHERE run_id = {{r}} ORDER BY step_no",
+    steps = q(f"SELECT step_name AS step, ms, row_count AS \"rows\" FROM {A}.RUN_STEPS WHERE run_id = {{r}} ORDER BY step_no",
               {"r": run["run_id"]}) if run else []
     facts = q1(f"""SELECT (SELECT COUNT(*) FROM {S}.TRAIL_EDGES WHERE case_id = {{c}}) AS transfers,
                           (SELECT COUNT(*) FROM {S}.SIZING WHERE case_id = {{c}}) AS accounts,
@@ -761,6 +856,8 @@ def case_basis(case_id: int):
         "facts": {**{k: int(v or 0) for k, v in facts.items()}, "transactions_total": int(total)},
         "steps": grouped,
         "rules": basis.rules(cfg),
+        "source_check": ({"run_id": run["run_id"], "tables": len(fps), "rows": sum(f["rows_after"] or 0 for f in fps),
+                          "unchanged": all(f["unchanged"] for f in fps)} if run and (fps := _fingerprints(run["run_id"])) else None),
         "page_query": (f"SELECT account_id, layer, balance_ref, retained_pr, retained_fifo, lower_amt, upper_amt, status\n"
                        f"FROM {S}.SIZING\nWHERE case_id = {case_id}\nORDER BY layer, account_id;"),
     }
@@ -920,7 +1017,7 @@ _run_lock = threading.Lock()
 
 @app.get("/api/runs")
 def runs():
-    rows = q(f"SELECT * FROM {S}.RUNS ORDER BY run_id DESC LIMIT 50")
+    rows = q(f"SELECT * FROM {A}.RUNS ORDER BY run_id DESC LIMIT 50")
     return {"runs": [_run_out(r) for r in rows], "running": _run_state["running"]}
 
 
@@ -932,19 +1029,21 @@ def _run_out(r):
 
 
 @app.post("/api/runs")
-def start_run():
+def start_run(body: dict | None = None):
     from app.engine import start_run as _start
+    mode = "lua" if (body or {}).get("mode") == "lua" else "python"
+    cfg = Config(orchestration=mode)
     with _run_lock:
         if _run_state["running"]:
             raise HTTPException(409, f"Run {_run_state['running']} is already in progress")
         conn = db.connect()
-        rid = _start(conn, S, Config())
+        rid = _start(conn, S, cfg)
         conn.close()
         _run_state["running"] = rid
 
     def work():
         try:
-            run_full(S, Config(), log=lambda m: None, run_id=rid)
+            run_full(S, cfg, log=lambda m: None, run_id=rid, mode=mode)
         except Exception:
             pass
         finally:
@@ -958,20 +1057,98 @@ def start_run():
 
 @app.get("/api/runs/{run_id}")
 def run_detail(run_id: int):
-    r = q1(f"SELECT * FROM {S}.RUNS WHERE run_id = {{r}}", {"r": run_id})
+    r = q1(f"SELECT * FROM {A}.RUNS WHERE run_id = {{r}}", {"r": run_id})
     if not r:
         raise HTTPException(404, "No such run")
     steps = [{"step_no": x["step_no"], "step": x["step"], "ms": x["ms"], "rows": x["row_count"]}
-             for x in q(f"SELECT step_no, step_name AS step, ms, row_count FROM {S}.RUN_STEPS "
+             for x in q(f"SELECT step_no, step_name AS step, ms, row_count FROM {A}.RUN_STEPS "
                         f"WHERE run_id = {{r}} ORDER BY step_no", {"r": run_id})]
-    prev = q1(f"SELECT run_id, checksum, snapshot_id FROM {S}.RUNS WHERE run_id < {{r}} AND run_status = 'DONE' "
+    prev = q1(f"SELECT run_id, checksum, snapshot_id FROM {A}.RUNS WHERE run_id < {{r}} AND run_status = 'DONE' "
               f"ORDER BY run_id DESC LIMIT 1", {"r": run_id})
     out = _run_out(r)
     out["steps"] = steps
     if prev and r["checksum"]:
         out["compared_with"] = {"run_id": prev["run_id"], "same_snapshot": prev["snapshot_id"] == r["snapshot_id"],
                                 "identical_results": prev["checksum"] == r["checksum"]}
+    out["fingerprints"] = _fingerprints(run_id)
+    out["source_unchanged"] = (all(f["unchanged"] for f in out["fingerprints"]) if out["fingerprints"] else None)
+    out["history_rows"] = q1(f"""SELECT (SELECT COUNT(*) FROM {A}.SIZING_HISTORY WHERE run_id = {{r}}) AS sizing,
+                                        (SELECT COUNT(*) FROM {A}.REVIEW_HISTORY WHERE run_id = {{r}}) AS review,
+                                        (SELECT COUNT(*) FROM {A}.CASE_SUMMARY_HISTORY WHERE run_id = {{r}}) AS cases,
+                                        (SELECT COUNT(*) FROM {A}.TRAIL_HISTORY WHERE run_id = {{r}}) AS trail""",
+                             {"r": run_id}) if table_exists("SIZING_HISTORY", A) else None
     return out
+
+
+def _fingerprints(run_id: int) -> list[dict]:
+    if not table_exists("SOURCE_FINGERPRINTS", A):
+        return []
+    rows = q(f"SELECT phase, table_name, row_count, fingerprint FROM {A}.SOURCE_FINGERPRINTS WHERE run_id = {{r}}",
+             {"r": run_id})
+    by = {}
+    for x in rows:
+        by.setdefault(x["table_name"], {})[x["phase"]] = x
+    out = []
+    for t, ph in sorted(by.items()):
+        b, a = ph.get("BEFORE"), ph.get("AFTER")
+        out.append({"table": t, "rows_before": b and int(b["row_count"]), "rows_after": a and int(a["row_count"]),
+                    "fingerprint_before": b and str(b["fingerprint"]), "fingerprint_after": a and str(a["fingerprint"]),
+                    "unchanged": bool(b and a and b["row_count"] == a["row_count"] and b["fingerprint"] == a["fingerprint"])})
+    return out
+
+
+# ---------------------------------------------------------------- protection and history
+@app.get("/api/protection")
+def protection():
+    """Tries every forbidden statement as the engine user; Exasol must refuse each one."""
+    if not db.engine_ready():
+        return {"ready": False, "note": "Run python -m app.secure (from the backend folder) to set up the protected layout."}
+    from app.secure import prove_protection
+    checks = prove_protection()
+    return {
+        "ready": True, "engine_user": db.ENGINE_USER, "all_ok": all(c["ok"] for c in checks), "checks": checks,
+        "schemas": [
+            {"schema": db.SRC_SCHEMA, "holds": "Source data: transactions, accounts, cases, requests, holds, letters", "engine": "read only"},
+            {"schema": db.SCHEMA, "holds": "Views of the source data and the calculation tables, rebuilt on every run", "engine": "owner (rebuilds)"},
+            {"schema": "TH_PLAYGROUND", "holds": "Scratch area for live analyses", "engine": "owner (rebuilds)"},
+            {"schema": db.AUDIT_SCHEMA, "holds": "Run log, results history, source fingerprints, live analyses, AI log", "engine": "add rows only"},
+            {"schema": db.GT_SCHEMA, "holds": "The generator's answer key", "engine": "no access (scenario labels only)"},
+        ],
+    }
+
+
+@app.get("/api/history/compare")
+def history_compare(a: int, b: int):
+    """Compares the stored results of two runs, account by account."""
+    p = {"a": a, "b": b}
+    r = q1(f"""SELECT
+        (SELECT COUNT(*) FROM {A}.SIZING_HISTORY WHERE run_id = {{a}}) AS rows_a,
+        (SELECT COUNT(*) FROM {A}.SIZING_HISTORY WHERE run_id = {{b}}) AS rows_b,
+        (SELECT COUNT(*) FROM {A}.SIZING_HISTORY x JOIN {A}.SIZING_HISTORY y
+            ON y.case_id = x.case_id AND y.account_id = x.account_id AND y.run_id = {{b}}
+          WHERE x.run_id = {{a}} AND (ABS(COALESCE(x.retained_pr, 0) - COALESCE(y.retained_pr, 0)) > 0.005
+                OR ABS(COALESCE(x.retained_fifo, 0) - COALESCE(y.retained_fifo, 0)) > 0.005
+                OR COALESCE(x.status, '') <> COALESCE(y.status, ''))) AS changed,
+        (SELECT COUNT(*) FROM {A}.REVIEW_HISTORY x JOIN {A}.REVIEW_HISTORY y
+            ON y.request_id = x.request_id AND y.account_id = x.account_id AND y.run_id = {{b}}
+          WHERE x.run_id = {{a}} AND COALESCE(x.classification, '') <> COALESCE(y.classification, '')) AS reclassified""", p)
+    out = {k: int(v or 0) for k, v in r.items()}
+    out["identical"] = out["rows_a"] == out["rows_b"] and out["changed"] == 0 and out["reclassified"] == 0 and out["rows_a"] > 0
+    return {"a": a, "b": b, **out}
+
+
+@app.get("/api/live-analyses")
+def live_analyses(limit: int = Query(20, le=100)):
+    if not table_exists("LIVE_ANALYSES", A):
+        return {"analyses": []}
+    rows = q(f"SELECT analysis_id, created, case_title, summary_json, engine_ms FROM {A}.LIVE_ANALYSES "
+             f"ORDER BY created DESC LIMIT {{n!d}}", {"n": limit})
+    for r in rows:
+        try:
+            r["summary"] = json.loads(r.pop("summary_json") or "{}")
+        except ValueError:
+            r["summary"] = {}
+    return {"analyses": rows}
 
 
 # ---------------------------------------------------------------- evaluation & benchmark
@@ -998,10 +1175,10 @@ def benchmark():
 def _full_run_timing():
     """The latest full analysis on the loaded dataset: the largest measured point."""
     try:
-        run = q1(f"SELECT run_id, duration_s FROM {S}.RUNS WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1")
+        run = q1(f"SELECT run_id, duration_s FROM {A}.RUNS WHERE run_status = 'DONE' ORDER BY run_id DESC LIMIT 1")
         if not run:
             return None
-        steps = q(f"SELECT step_name, ms FROM {S}.RUN_STEPS WHERE run_id = {{r}} ORDER BY step_no", {"r": run["run_id"]})
+        steps = q(f"SELECT step_name, ms FROM {A}.RUN_STEPS WHERE run_id = {{r}} ORDER BY step_no", {"r": run["run_id"]})
         core, in_core = 0.0, True
         for st in steps:  # the core workload ends with sizing (same as W2 in the benchmark)
             if in_core:
