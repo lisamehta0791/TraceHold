@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+*.log
+
+# secrets (Groq key, reader passwords)
+.env
+.env.*
+!.env.example
+.venv-mcp/

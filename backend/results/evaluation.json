@@ -1,0 +1,674 @@
+{
+  "generated_at": "2026-10-17T14:57:08",
+  "note": "All results are on synthetic data and are not evidence of real-world performance.",
+  "request_defects": [
+    {
+      "defect": "AMOUNT_MISMATCH",
+      "planted": 72,
+      "detected": 72,
+      "tp": 72,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "AMOUNT_UNIT",
+      "planted": 74,
+      "detected": 74,
+      "tp": 74,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "DUPLICATE_REQUEST",
+      "planted": 63,
+      "detected": 63,
+      "tp": 63,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_AMOUNT",
+      "planted": 70,
+      "detected": 70,
+      "tp": 70,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_CASE_REF",
+      "planted": 77,
+      "detected": 77,
+      "tp": 77,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_CONTACT",
+      "planted": 70,
+      "detected": 70,
+      "tp": 70,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_DESIGNATION",
+      "planted": 67,
+      "detected": 67,
+      "tp": 67,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_LEGAL_PROVISION",
+      "planted": 59,
+      "detected": 59,
+      "tp": 59,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_OFFICER",
+      "planted": 53,
+      "detected": 53,
+      "tp": 53,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "MISSING_TXN",
+      "planted": 84,
+      "detected": 84,
+      "tp": 84,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "REQUESTED_EXCEEDS",
+      "planted": 64,
+      "detected": 64,
+      "tp": 64,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "REUSED_REFERENCE",
+      "planted": 65,
+      "detected": 65,
+      "tp": 65,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "TARGET_MISMATCH",
+      "planted": 59,
+      "detected": 59,
+      "tp": 59,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "defect": "TXN_NOT_FOUND",
+      "planted": 69,
+      "detected": 69,
+      "tp": 69,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  ],
+  "request_defects_summary": {
+    "tp": 946,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "planted_conflict_requests": 421,
+    "planted_conflict_reported_complete": 0
+  },
+  "path": [
+    {
+      "scenario": "BUSINESS_TURNOVER",
+      "tp": 1017,
+      "fp": 63,
+      "fn": 0,
+      "precision": 0.9417,
+      "recall": 1.0,
+      "major": {
+        "tp": 1015,
+        "fp": 48,
+        "fn": 2,
+        "precision": 0.9548,
+        "recall": 0.998
+      }
+    },
+    {
+      "scenario": "COMMINGLED",
+      "tp": 944,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "major": {
+        "tp": 762,
+        "fp": 0,
+        "fn": 182,
+        "precision": 1.0,
+        "recall": 0.8072
+      }
+    },
+    {
+      "scenario": "CROSS_INSTITUTION",
+      "tp": 1075,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "major": {
+        "tp": 1075,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    {
+      "scenario": "INNOCENT_RECIPIENT",
+      "tp": 1268,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "major": {
+        "tp": 1268,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    {
+      "scenario": "RAPID_CASHOUT",
+      "tp": 1383,
+      "fp": 0,
+      "fn": 4,
+      "precision": 1.0,
+      "recall": 0.9971,
+      "major": {
+        "tp": 1383,
+        "fp": 0,
+        "fn": 4,
+        "precision": 1.0,
+        "recall": 0.9971
+      }
+    },
+    {
+      "scenario": "REVERSAL_FAILED",
+      "tp": 669,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "major": {
+        "tp": 669,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    {
+      "scenario": "SHARED_ACCOUNT",
+      "tp": 692,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.9971,
+      "recall": 1.0,
+      "major": {
+        "tp": 639,
+        "fp": 2,
+        "fn": 53,
+        "precision": 0.9969,
+        "recall": 0.9234
+      }
+    },
+    {
+      "scenario": "SIMPLE_CHAIN",
+      "tp": 1919,
+      "fp": 6,
+      "fn": 2,
+      "precision": 0.9969,
+      "recall": 0.999,
+      "major": {
+        "tp": 1900,
+        "fp": 2,
+        "fn": 21,
+        "precision": 0.9989,
+        "recall": 0.9891
+      }
+    },
+    {
+      "scenario": "SPLIT_MERGE",
+      "tp": 2296,
+      "fp": 0,
+      "fn": 6,
+      "precision": 1.0,
+      "recall": 0.9974,
+      "major": {
+        "tp": 2259,
+        "fp": 0,
+        "fn": 43,
+        "precision": 1.0,
+        "recall": 0.9813
+      }
+    },
+    {
+      "scenario": "WORKED_EXAMPLE",
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "major": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.6667
+      }
+    }
+  ],
+  "path_summary": {
+    "any_disputed": {
+      "tp": 11266,
+      "fp": 71,
+      "fn": 12,
+      "precision": 0.9937,
+      "recall": 0.9989
+    },
+    "major_share": {
+      "tp": 10972,
+      "fp": 52,
+      "fn": 306,
+      "precision": 0.9953,
+      "recall": 0.9729
+    },
+    "definition": "An edge is reconstructed if it carries disputed funds (>= the dust threshold) under any convention; 'major' requires at least 50% of the transfer to be disputed. Pro-rata legitimately spreads small disputed fractions to ordinary payments of commingled accounts, which count as false positives here."
+  },
+  "amount": [
+    {
+      "convention": "PR",
+      "n": 6896,
+      "mae": 18.935667524651954,
+      "max_abs_err": 98450.14,
+      "within_1_rupee": 0.9985498839907193,
+      "within_1_paisa": 0.9985498839907193,
+      "relative_err": 0.0008345859810434237,
+      "range_coverage": 0.998984477005658
+    },
+    {
+      "convention": "LIFO",
+      "n": 6896,
+      "mae": 17.704229988400023,
+      "max_abs_err": 103525.59,
+      "within_1_rupee": 0.9991299303944315,
+      "within_1_paisa": 0.9991299303944315,
+      "relative_err": 0.0008068303728784324,
+      "range_coverage": 0.998984477005658
+    },
+    {
+      "convention": "FIFO",
+      "n": 6896,
+      "mae": 19.942765371230728,
+      "max_abs_err": 99059.26,
+      "within_1_rupee": 0.9991299303944315,
+      "within_1_paisa": 0.9991299303944315,
+      "relative_err": 0.0008642621490403785,
+      "range_coverage": 0.998984477005658
+    }
+  ],
+  "conservation": {
+    "checks": 7200,
+    "passed": 7200,
+    "max_abs_difference": 2.8085196390748024e-09
+  },
+  "abstention": {
+    "planted": 269,
+    "correctly_undeterminable": 267,
+    "determinable": 6894,
+    "wrongly_undeterminable": 3,
+    "share_correct": 0.9926,
+    "share_wrong": 0.000435
+  },
+  "overbroad": {
+    "planted": 3589,
+    "flagged": 3588,
+    "targets": 6259,
+    "tp": 3588,
+    "fp": 0,
+    "fn": 1,
+    "precision": 1.0,
+    "recall": 0.9997,
+    "definition": "A request target is over-broad when the requested amount exceeds the ground-truth upper bound (larger of the pro-rata and FIFO ledgers) by more than one rupee."
+  },
+  "policy_simulation": {
+    "hold_time": "each case's reference time (when the request was received)",
+    "truth": {
+      "pro_rata": 149289379.33319,
+      "fifo": 151981461.94
+    },
+    "note": "Synthetic data only. 'Disputed held' is measured against the generator's pro-rata ledger (the FIFO-ledger figure is also given). These are not real-world recovery or harm figures.",
+    "policies": [
+      {
+        "policy": "WHOLE_BALANCE",
+        "label": "Whole balance",
+        "description": "Hold the whole balance of every targeted account",
+        "disputed_held": 148046919.180581,
+        "non_disputed_locked": 658196343.709419,
+        "accounts_restricted": 6474,
+        "disputed_held_fifo_truth": 150590748.0,
+        "by_scenario": [
+          {
+            "scenario": "BUSINESS_TURNOVER",
+            "disputed_held": 19303948.053875998,
+            "non_disputed_locked": 253613810.646124,
+            "accounts_restricted": 648
+          },
+          {
+            "scenario": "COMMINGLED",
+            "disputed_held": 30687358.77892,
+            "non_disputed_locked": 323663031.85108,
+            "accounts_restricted": 757
+          },
+          {
+            "scenario": "CROSS_INSTITUTION",
+            "disputed_held": 6041061.088157,
+            "non_disputed_locked": 211290.09184300032,
+            "accounts_restricted": 512
+          },
+          {
+            "scenario": "INNOCENT_RECIPIENT",
+            "disputed_held": 16190433.181929,
+            "non_disputed_locked": 69562148.298071,
+            "accounts_restricted": 820
+          },
+          {
+            "scenario": "RAPID_CASHOUT",
+            "disputed_held": 2904929.219743,
+            "non_disputed_locked": 107007.87025700008,
+            "accounts_restricted": 434
+          },
+          {
+            "scenario": "REVERSAL_FAILED",
+            "disputed_held": 20232804.471207,
+            "non_disputed_locked": 1012321.8987930011,
+            "accounts_restricted": 529
+          },
+          {
+            "scenario": "SHARED_ACCOUNT",
+            "disputed_held": 9414917.756004,
+            "non_disputed_locked": 5116818.493996001,
+            "accounts_restricted": 362
+          },
+          {
+            "scenario": "SIMPLE_CHAIN",
+            "disputed_held": 23680772.462991,
+            "non_disputed_locked": 2792800.777009001,
+            "accounts_restricted": 1262
+          },
+          {
+            "scenario": "SPLIT_MERGE",
+            "disputed_held": 19490694.167754,
+            "non_disputed_locked": 1547113.7822460008,
+            "accounts_restricted": 1147
+          },
+          {
+            "scenario": "WORKED_EXAMPLE",
+            "disputed_held": 100000.0,
+            "non_disputed_locked": 570000.0,
+            "accounts_restricted": 3
+          }
+        ]
+      },
+      {
+        "policy": "REQUESTED",
+        "label": "As requested",
+        "description": "Hold what was requested",
+        "disputed_held": 146569395.478567,
+        "non_disputed_locked": 538828449.661433,
+        "accounts_restricted": 6474,
+        "disputed_held_fifo_truth": 149082680.49,
+        "by_scenario": [
+          {
+            "scenario": "BUSINESS_TURNOVER",
+            "disputed_held": 19303948.053875998,
+            "non_disputed_locked": 253547779.636124,
+            "accounts_restricted": 648
+          },
+          {
+            "scenario": "COMMINGLED",
+            "disputed_held": 30687358.77892,
+            "non_disputed_locked": 207794178.40108,
+            "accounts_restricted": 757
+          },
+          {
+            "scenario": "CROSS_INSTITUTION",
+            "disputed_held": 6041061.088157,
+            "non_disputed_locked": 211120.31184300032,
+            "accounts_restricted": 512
+          },
+          {
+            "scenario": "INNOCENT_RECIPIENT",
+            "disputed_held": 16190433.181929,
+            "non_disputed_locked": 69517604.778071,
+            "accounts_restricted": 820
+          },
+          {
+            "scenario": "RAPID_CASHOUT",
+            "disputed_held": 2904929.219743,
+            "non_disputed_locked": 107007.87025700008,
+            "accounts_restricted": 434
+          },
+          {
+            "scenario": "REVERSAL_FAILED",
+            "disputed_held": 20073341.627002,
+            "non_disputed_locked": 901366.422998001,
+            "accounts_restricted": 529
+          },
+          {
+            "scenario": "SHARED_ACCOUNT",
+            "disputed_held": 9414917.756004,
+            "non_disputed_locked": 3068099.3339960007,
+            "accounts_restricted": 362
+          },
+          {
+            "scenario": "SIMPLE_CHAIN",
+            "disputed_held": 23680772.462991,
+            "non_disputed_locked": 1922162.207009001,
+            "accounts_restricted": 1262
+          },
+          {
+            "scenario": "SPLIT_MERGE",
+            "disputed_held": 18172633.309945,
+            "non_disputed_locked": 1189130.7000550006,
+            "accounts_restricted": 1147
+          },
+          {
+            "scenario": "WORKED_EXAMPLE",
+            "disputed_held": 100000.0,
+            "non_disputed_locked": 570000.0,
+            "accounts_restricted": 3
+          }
+        ]
+      },
+      {
+        "policy": "LOWER",
+        "label": "Lower bound",
+        "description": "Hold the lower end of the supported range",
+        "disputed_held": 137504459.14163,
+        "non_disputed_locked": 64806917.078370005,
+        "accounts_restricted": 6282,
+        "disputed_held_fifo_truth": 137597740.66,
+        "by_scenario": [
+          {
+            "scenario": "BUSINESS_TURNOVER",
+            "disputed_held": 19199871.019461,
+            "non_disputed_locked": 60204798.590539,
+            "accounts_restricted": 646
+          },
+          {
+            "scenario": "COMMINGLED",
+            "disputed_held": 21257117.108325,
+            "non_disputed_locked": 3596848.1416750005,
+            "accounts_restricted": 606
+          },
+          {
+            "scenario": "CROSS_INSTITUTION",
+            "disputed_held": 6041060.439809,
+            "non_disputed_locked": 1423.4901910001893,
+            "accounts_restricted": 512
+          },
+          {
+            "scenario": "INNOCENT_RECIPIENT",
+            "disputed_held": 15721116.034906,
+            "non_disputed_locked": 465004.66509400035,
+            "accounts_restricted": 788
+          },
+          {
+            "scenario": "RAPID_CASHOUT",
+            "disputed_held": 2904921.417189,
+            "non_disputed_locked": 4680.972811000056,
+            "accounts_restricted": 434
+          },
+          {
+            "scenario": "REVERSAL_FAILED",
+            "disputed_held": 20077629.05636,
+            "non_disputed_locked": 20972.923640000223,
+            "accounts_restricted": 529
+          },
+          {
+            "scenario": "SHARED_ACCOUNT",
+            "disputed_held": 9355525.479057001,
+            "non_disputed_locked": 202813.88094300008,
+            "accounts_restricted": 361
+          },
+          {
+            "scenario": "SIMPLE_CHAIN",
+            "disputed_held": 23590089.005569,
+            "non_disputed_locked": 278104.64443100017,
+            "accounts_restricted": 1261
+          },
+          {
+            "scenario": "SPLIT_MERGE",
+            "disputed_held": 19307977.040954,
+            "non_disputed_locked": 32269.76904600027,
+            "accounts_restricted": 1143
+          },
+          {
+            "scenario": "WORKED_EXAMPLE",
+            "disputed_held": 49152.54,
+            "non_disputed_locked": 0.0,
+            "accounts_restricted": 2
+          }
+        ]
+      },
+      {
+        "policy": "UPPER",
+        "label": "Upper bound",
+        "description": "Hold the upper end of the supported range",
+        "disputed_held": 148046917.654611,
+        "non_disputed_locked": 77797042.535389,
+        "accounts_restricted": 6474,
+        "disputed_held_fifo_truth": 150590748.0,
+        "by_scenario": [
+          {
+            "scenario": "BUSINESS_TURNOVER",
+            "disputed_held": 19303947.901797,
+            "non_disputed_locked": 60435193.548203,
+            "accounts_restricted": 648
+          },
+          {
+            "scenario": "COMMINGLED",
+            "disputed_held": 30687358.398961,
+            "non_disputed_locked": 13165303.681039002,
+            "accounts_restricted": 757
+          },
+          {
+            "scenario": "CROSS_INSTITUTION",
+            "disputed_held": 6041061.088157,
+            "non_disputed_locked": 210727.62184300032,
+            "accounts_restricted": 512
+          },
+          {
+            "scenario": "INNOCENT_RECIPIENT",
+            "disputed_held": 16190432.823298,
+            "non_disputed_locked": 754379.1567020008,
+            "accounts_restricted": 820
+          },
+          {
+            "scenario": "RAPID_CASHOUT",
+            "disputed_held": 2904929.2194519998,
+            "non_disputed_locked": 104378.68054800008,
+            "accounts_restricted": 434
+          },
+          {
+            "scenario": "REVERSAL_FAILED",
+            "disputed_held": 20232804.277321998,
+            "non_disputed_locked": 189088.3826780008,
+            "accounts_restricted": 529
+          },
+          {
+            "scenario": "SHARED_ACCOUNT",
+            "disputed_held": 9414917.688895,
+            "non_disputed_locked": 1404638.8411050003,
+            "accounts_restricted": 362
+          },
+          {
+            "scenario": "SIMPLE_CHAIN",
+            "disputed_held": 23680772.241498,
+            "non_disputed_locked": 864326.3185020006,
+            "accounts_restricted": 1262
+          },
+          {
+            "scenario": "SPLIT_MERGE",
+            "disputed_held": 19490694.015231,
+            "non_disputed_locked": 618158.8447690008,
+            "accounts_restricted": 1147
+          },
+          {
+            "scenario": "WORKED_EXAMPLE",
+            "disputed_held": 100000.0,
+            "non_disputed_locked": 50847.46,
+            "accounts_restricted": 3
+          }
+        ]
+      }
+    ]
+  }
+}

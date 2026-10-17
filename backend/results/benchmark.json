@@ -1,0 +1,177 @@
+{
+  "generated_at": "2026-10-15T20:05:15",
+  "hardware": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "cpu_count": 8,
+    "python": "3.12.10",
+    "cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+    "ram_gb": 7.7,
+    "containers": "Both databases run in Docker Desktop (WSL2) on this machine with a 4 GB memory limit each."
+  },
+  "versions": {
+    "Exasol": "2026.2.0-nano.3"
+  },
+  "settings": {
+    "postgresql": [
+      "shared_buffers=1GB",
+      "work_mem=256MB",
+      "maintenance_work_mem=512MB",
+      "effective_cache_size=3GB",
+      "max_parallel_workers_per_gather=4",
+      "random_page_cost=1.1",
+      "synchronous_commit=off",
+      "indexes: see Engine.PG_INDEXES"
+    ],
+    "exasol": "defaults (indexes are automatic)"
+  },
+  "method": "Identical SQL on both engines, one transaction per analysis step. The first run of each workload is reported as cold; median/min/max are over the remaining (warm) runs. Synthetic data only. Only these workloads were measured; no general claim is made.",
+  "results": [
+    {
+      "engine": "Exasol",
+      "tier": "S",
+      "workload": "LOAD",
+      "rows": 241125,
+      "runs": 1,
+      "times_s": [
+        15.263
+      ],
+      "cold_s": 15.263,
+      "median_s": 15.263,
+      "min_s": 15.263,
+      "max_s": 15.263
+    },
+    {
+      "engine": "Exasol",
+      "tier": "S",
+      "workload": "W2",
+      "rows": 241125,
+      "runs": 3,
+      "times_s": [
+        30.281,
+        32.361,
+        23.329
+      ],
+      "cold_s": 30.281,
+      "median_s": 27.845,
+      "min_s": 23.329,
+      "max_s": 32.361
+    },
+    {
+      "engine": "Exasol",
+      "tier": "S",
+      "workload": "W3",
+      "rows": 241125,
+      "runs": 5,
+      "times_s": [
+        0.492,
+        0.493,
+        0.312,
+        0.37,
+        0.313
+      ],
+      "cold_s": 0.492,
+      "median_s": 0.341,
+      "min_s": 0.312,
+      "max_s": 0.493
+    },
+    {
+      "engine": "Exasol",
+      "tier": "S",
+      "workload": "W1",
+      "rows": 241125,
+      "cases": [
+        227,
+        34,
+        35,
+        180,
+        19
+      ],
+      "runs": 5,
+      "times_s": [
+        4.776,
+        5.066,
+        5.877,
+        4.933,
+        4.893
+      ],
+      "cold_s": 4.776,
+      "median_s": 4.999,
+      "min_s": 4.893,
+      "max_s": 5.877
+    },
+    {
+      "engine": "Exasol",
+      "tier": "M",
+      "workload": "LOAD",
+      "rows": 958023,
+      "runs": 1,
+      "times_s": [
+        19.294
+      ],
+      "cold_s": 19.294,
+      "median_s": 19.294,
+      "min_s": 19.294,
+      "max_s": 19.294
+    },
+    {
+      "engine": "Exasol",
+      "tier": "M",
+      "workload": "W2",
+      "rows": 958023,
+      "runs": 3,
+      "times_s": [
+        44.163,
+        36.901,
+        50.711
+      ],
+      "cold_s": 44.163,
+      "median_s": 43.806,
+      "min_s": 36.901,
+      "max_s": 50.711
+    },
+    {
+      "engine": "Exasol",
+      "tier": "M",
+      "workload": "W3",
+      "rows": 958023,
+      "runs": 5,
+      "times_s": [
+        0.46,
+        0.548,
+        0.597,
+        0.795,
+        0.435
+      ],
+      "cold_s": 0.46,
+      "median_s": 0.572,
+      "min_s": 0.435,
+      "max_s": 0.795
+    },
+    {
+      "engine": "Exasol",
+      "tier": "M",
+      "workload": "W1",
+      "rows": 958023,
+      "cases": [
+        911,
+        924,
+        899,
+        658,
+        276
+      ],
+      "runs": 5,
+      "times_s": [
+        9.538,
+        6.378,
+        10.033,
+        11.4,
+        11.179
+      ],
+      "cold_s": 9.538,
+      "median_s": 10.606,
+      "min_s": 6.378,
+      "max_s": 11.4
+    }
+  ]
+}
