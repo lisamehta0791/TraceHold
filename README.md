@@ -17,44 +17,32 @@ can actually trace to the fraud**, as a range with the full calculation shown.
 
 ---
 
-## Screenshots
-
-![Landing page](docs/screenshots/01-landing.jpg)
-
-![Live analysis: the worked example, asked to hold vs supported by the records](docs/screenshots/02-live-analysis.jpg)
+## Links
 
 | | |
 |---|---|
-| ![Reading a police letter with AI](docs/screenshots/03-police-letter-ai.jpg) | ![A stored case with every account the money reached](docs/screenshots/04-case.jpg) |
-| **Reading a police letter with AI:** every value quotes the letter and is checked by rules | **A stored case:** every account the money reached, with its range under each method |
-| ![Lien review queue](docs/screenshots/05-lien-review.jpg) | ![Ask the results through Exasol's MCP server](docs/screenshots/06-ask.jpg) |
-| **Lien review:** existing holds ranked for a person to look at again | **Ask the results:** plain-English questions, answered through Exasol's MCP server with the SQL shown |
-| ![Accuracy on the synthetic data](docs/screenshots/07-accuracy.jpg) | ![Try to break it: Exasol refuses every damaging statement](docs/screenshots/08-try-to-break-it.jpg) |
-| **Accuracy:** scored against an answer key the analysis never reads | **Try to break it:** Exasol refuses every attempt to change source data or history |
+| **Demo video** | *Coming soon* |
+| **Pitch deck** | [PDF](docs/TraceHold-Pitch-Deck.pdf) (opens in the browser) · [PowerPoint](docs/TraceHold-Pitch-Deck.pptx) |
+| **Source code** | [github.com/lisamehta0791/TraceHold](https://github.com/lisamehta0791/TraceHold) |
+| **Screenshots** | [Below](#screenshots) |
+| **Run it yourself** | [Installation](#installation), then [Running TraceHold](#running-tracehold) |
 
----
+## Screenshots
 
-## Contents
+<p align="center">
+  <img src="docs/screenshots/01-landing.jpg" alt="TraceHold landing page" width="760">
+</p>
 
-- [Screenshots](#screenshots)
-- [The problem](#the-problem)
-- [Features](#features)
-- [AI at the edges](#ai-at-the-edges)
-- [Data protection and history](#data-protection-and-history)
-- [How it works](#how-it-works)
-- [Method](#method)
-- [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Running TraceHold](#running-tracehold)
-- [Using the app](#using-the-app)
-- [Tests and evaluation](#tests-and-evaluation)
-- [Results on the synthetic data](#results-on-the-synthetic-data)
-- [API](#api)
-- [Troubleshooting](#troubleshooting)
-- [Responsible use](#responsible-use)
-- [Licence](#licence)
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/02-live-analysis.jpg" alt="Live analysis result"><br><b>Live analysis:</b> the verdict first, asked to hold vs supported by the records</td>
+    <td width="50%"><img src="docs/screenshots/03-police-letter-ai.jpg" alt="Reading a police letter with AI"><br><b>Reading a police letter with AI:</b> every value quotes the letter and is checked by rules</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/04-ask.jpg" alt="Ask the results"><br><b>Ask the results:</b> plain-English questions through Exasol's MCP server, with the SQL shown</td>
+    <td width="50%"><img src="docs/screenshots/05-try-to-break-it.jpg" alt="Try to break it"><br><b>Try to break it:</b> Exasol refuses every attempt to change source data or history</td>
+  </tr>
+</table>
 
 ---
 
