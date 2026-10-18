@@ -23,7 +23,7 @@ can actually trace to the fraud**, as a range with the full calculation shown.
 |---|---|
 | **Hackathon** | ExaThon India 2026 |
 | **Track** | Track 01: Money, Risk & Regulation |
-| **Demo video** | *Coming soon* |
+| **Demo video** | [Watch on YouTube](https://youtu.be/MmQ2eV-ai9Q) (2 min 54 s) |
 | **Pitch deck** | [PDF](docs/TraceHold-Pitch-Deck.pdf) (opens in the browser) · [PowerPoint](docs/TraceHold-Pitch-Deck.pptx) |
 | **Source code** | [github.com/lisamehta0791/TraceHold](https://github.com/lisamehta0791/TraceHold) |
 | **Screenshots** | [Below](#screenshots) |
