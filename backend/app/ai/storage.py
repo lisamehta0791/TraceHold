@@ -25,7 +25,9 @@ def ensure_ai_tables(conn=None) -> bool:
                     "SELECT TABLE_NAME FROM EXA_ALL_TABLES WHERE TABLE_SCHEMA = {s}", {"s": schema}).fetchall()}
             if all(t in names(db.SRC_SCHEMA) for t in _REQUIRED["SRC"]) and \
                     all(t in names(db.AUDIT_SCHEMA) for t in _REQUIRED["A"]):
-                return False
+                # app.load --fresh recreates the letters table empty with the layout
+                if conn.execute(f"SELECT COUNT(*) FROM {db.SRC_SCHEMA}.REQUEST_DOCUMENTS").fetchval():
+                    return False
             from app.ai_setup import load_letters
             from app.secure import ensure_layout
             ensure_layout(log=lambda m: None)  # creates the AI tables, views and grants

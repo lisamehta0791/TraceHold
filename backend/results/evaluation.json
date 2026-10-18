@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T15:58:04",
+  "generated_at": "2026-10-18T12:14:11",
   "note": "All results are on synthetic data and are not evidence of real-world performance.",
   "request_defects": [
     {
@@ -329,7 +329,7 @@
       "max_abs_err": 98450.14,
       "within_1_rupee": 0.9985498839907193,
       "within_1_paisa": 0.9985498839907193,
-      "relative_err": 0.0008345859810434237,
+      "relative_err": 0.0008345859810434239,
       "range_coverage": 0.998984477005658
     },
     {
@@ -379,8 +379,8 @@
   },
   "determinism": {
     "runs_compared": [
-      1,
-      2
+      6,
+      7
     ],
     "same_snapshot": true,
     "identical_results": true

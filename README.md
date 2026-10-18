@@ -46,7 +46,7 @@ can actually trace to the fraud**, as a range with the full calculation shown.
 
 ---
 
-## The problem
+## Problem statement
 
 An officer deciding how much of an account to hold in a cyber-fraud case can't tell how much of the victim's money
 actually reached that account: it is split, mixed with other money and moved on within minutes, and requests often

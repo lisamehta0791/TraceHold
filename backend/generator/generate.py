@@ -789,7 +789,7 @@ class Gen:
         w("gt/case_scenario.csv", ["case_id", "scenario"], sorted(self.scenario.items()))
         w("gt/chain_txns.csv", ["case_id", "txn_id", "layer"], self.chain)
         w("gt/ledger.csv", ["case_id", "account_id", "convention", "retained"],
-          [(c, a, k, f"{v:.6f}") for c, a, k, v in ledger])
+          [(c, a, k, f"{v:.6f}") for c, a, k, v in sorted(ledger)])
         planted = list(self.planted) + [("UNDETERMINABLE", c, None, a, None,
                                          "planted, or downstream of a planted record defect")
                                         for c, a in sorted(tainted)]
