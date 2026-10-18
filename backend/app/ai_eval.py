@@ -1,4 +1,4 @@
-"""Evaluation of the AI features on held-out synthetic data (project document, section 10).
+"""Evaluation of the AI features on held-out synthetic data.
 
     python -m app.ai_eval            # from the backend folder; writes results/ai_evaluation.json
 

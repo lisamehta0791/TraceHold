@@ -1,4 +1,4 @@
-"""The AI boundary (project document, sections 3.4, 4.8 and 9.3).
+"""The AI boundary.
 
 - The calculation path never imports the AI package.
 - The analysis SQL never reads the ground-truth schema.

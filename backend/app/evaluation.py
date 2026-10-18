@@ -1,4 +1,4 @@
-"""Evaluation harness (Section 10) and policy simulation (AF3).
+"""Evaluation harness and policy simulation.
 
 This is the only code that reads the ground-truth schema. It compares the
 derived tables written by the analysis with the generator's answer key.

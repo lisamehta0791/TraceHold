@@ -1,4 +1,4 @@
-"""AI at the edges (project document, section 4.8).
+"""AI at the edges.
 
 Models only read free-text letters (CF9), answer questions over results views
 (AF7) and reword a finished explanation (AF8). No model produces or changes a

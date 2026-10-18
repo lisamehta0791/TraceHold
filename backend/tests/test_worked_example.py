@@ -1,4 +1,4 @@
-"""The worked example from the project document (section 4.7), checked to the paisa,
+"""The worked example (₹1,00,000 through accounts A, B and C), checked to the paisa,
 plus the last-in-first-out bounds from AF2 and the over-broad ratios from CF5."""
 import pytest
 

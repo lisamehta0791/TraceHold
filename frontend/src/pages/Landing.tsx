@@ -308,7 +308,7 @@ function Step({ i, title, text, active, onActive }: { i: number; title: string; 
   );
 }
 
-/** The Section 4.7 chain, drawn step by step: victim → A → B → C. */
+/** The worked example chain, drawn step by step: victim → A → B → C. */
 function FlowDiagram({ step }: { step: number }) {
   const nodes = [
     { id: 'V', label: 'Victim', x: 60, bal: 0 },

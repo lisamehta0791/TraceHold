@@ -232,7 +232,7 @@ class Gen:
         weights = [w for _, w in SCENARIO_MIX]
         t0, t1 = ep(WINDOW_START + timedelta(days=10)), ep(WINDOW_END - timedelta(days=3))
         self.shared_hubs = []
-        # Case 1 is the worked example from Section 4.7 of the project document.
+        # Case 1 is the worked example: ₹1,00,000 through accounts A, B and C.
         self.worked_example()
         for cid in range(2, self.n_cases + 1):
             sc = r.choices(names, weights)[0]
