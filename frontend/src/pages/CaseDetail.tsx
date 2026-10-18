@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api';
 import type { CaseDetail as CD, Convention, Extraction, ReviewRow, RewordResult, TrailNode } from '../types';
@@ -14,7 +14,7 @@ import { Card } from '../components/Card';
 import { ClassChip, ReqChip, ScenarioChip, StatusChip } from '../components/Chip';
 import { ErrorCard } from '../components/ErrorCard';
 import {
-  IconAlert, IconCheck, IconChevronLeft, IconConflict, IconCopy, IconDoc, IconDownload, IconExternal, IconLetter, IconSpark, IconUser,
+  IconAlert, IconCheck, IconChevronLeft, IconConflict, IconCopy, IconDoc, IconDownload, IconLetter, IconSpark, IconUser,
 } from '../components/Icons';
 import { Modal } from '../components/Modal';
 import { RangeBar } from '../components/RangeBar';
@@ -78,7 +78,7 @@ function CaseView({ d }: { d: CD }) {
     <motion.div variants={staggerParent} initial="hidden" animate="show">
       <motion.div variants={riseIn} className="page-head" style={{ alignItems: 'flex-start' }}>
         <div>
-          <Link to="/cases" className="row small" style={{ gap: 4, textDecoration: 'none', marginBottom: 8 }}><IconChevronLeft size={14} /> All cases</Link>
+          <BackLink />
           <h1 className="mono" style={{ fontFamily: 'var(--f-display)', fontSize: '1.9rem' }}>{c.case_ref}</h1>
           <div className="row wrap mt" style={{ gap: 18 }}>
             <Meta k="Reported loss" v={<span className="num">{rupees(c.reported_loss)}</span>} />
@@ -92,7 +92,7 @@ function CaseView({ d }: { d: CD }) {
           </div>
         </div>
         <div className="row wrap">
-          <Button variant="primary" icon={<IconExternal size={16} />} href={api.packetHtmlUrl(c.case_id)} target="_blank">Open evidence packet</Button>
+          <Button variant="primary" icon={<IconDoc size={16} />} href={api.packetHtmlUrl(c.case_id)}>Open evidence packet</Button>
           <Button icon={<IconDownload size={16} />} loading={pktBusy} onClick={downloadPacket}>Download packet JSON</Button>
         </div>
       </motion.div>
@@ -603,4 +603,14 @@ function BasisTab({ caseId }: { caseId: number }) {
         ...(data.source_check ? [{ label: `source tables unchanged by run #${data.source_check.run_id} (row counts and fingerprints checked before and after)`, value: data.source_check.unchanged ? `${data.source_check.tables} of ${data.source_check.tables}` : 'changed!' }] : []),
       ]} />
   );
+}
+
+/** Back to wherever the case was opened from (cases list, lien review, ...); the cases list on a direct visit. */
+function BackLink() {
+  const nav = useNavigate();
+  const inApp = useLocation().key !== 'default';
+  const style = { gap: 4, textDecoration: 'none', marginBottom: 8 };
+  return inApp
+    ? <Link to="/cases" className="row small" style={style} onClick={(e) => { e.preventDefault(); nav(-1); }}><IconChevronLeft size={14} /> Back</Link>
+    : <Link to="/cases" className="row small" style={style}><IconChevronLeft size={14} /> All cases</Link>;
 }

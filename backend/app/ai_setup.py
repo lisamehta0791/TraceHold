@@ -97,9 +97,10 @@ def install_mcp_server() -> str:
     if exe.exists():
         return f"already installed in {MCP_VENV.name}"
     subprocess.run([sys.executable, "-m", "venv", str(MCP_VENV)], check=True)
-    pip = MCP_VENV / ("Scripts/pip.exe" if sys.platform == "win32" else "bin/pip")
+    py = MCP_VENV / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     version = SERVER_PACKAGE.split("@")[-1]
-    subprocess.run([str(pip), "install", "-q", f"exasol-mcp-server=={version}"], check=True)
+    # python -m pip rather than pip.exe: Windows Smart App Control can block unsigned launchers
+    subprocess.run([str(py), "-m", "pip", "install", "-q", f"exasol-mcp-server=={version}"], check=True)
     return f"installed exasol-mcp-server {version} in {MCP_VENV.name}"
 
 

@@ -857,3 +857,7 @@ body { background: var(--paper); }
 
 .synthetic-tag { font: 600 11.5px var(--f-ui); letter-spacing: 0.04em; color: var(--oxblood); border: 1px solid rgba(122, 34, 50, 0.35); padding: 4px 9px; border-radius: 6px; }
 @media (max-width: 760px) { .synthetic-tag { display: none; } }
+
+/* the selected option carries its own colour, so its text contrast does not depend on the animated layer */
+.seg button.on { background: var(--oxblood); }
+.togglechip.on { background: var(--c, var(--oxblood)); }

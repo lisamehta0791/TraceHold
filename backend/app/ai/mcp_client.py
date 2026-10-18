@@ -24,9 +24,11 @@ MCP_VENV = db.ROOT / ".venv-mcp"   # project-local environment for the server (c
 
 def server_command() -> tuple[str, list[str]]:
     """The server installed in the project's own .venv-mcp; uvx only as a fallback."""
-    exe = MCP_VENV / ("Scripts/exasol-mcp-server.exe" if os.name == "nt" else "bin/exasol-mcp-server")
-    if exe.exists():
-        return str(exe), []
+    # run the module with the environment's own Python rather than the pip-generated
+    # exasol-mcp-server.exe launcher, which Windows Smart App Control blocks as unsigned
+    py = MCP_VENV / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    if py.exists() and (MCP_VENV / ("Scripts/exasol-mcp-server.exe" if os.name == "nt" else "bin/exasol-mcp-server")).exists():
+        return str(py), ["-m", "exasol.ai.mcp.server.main"]
     found = shutil.which("uvx") or str(Path.home() / ".local" / "bin" / ("uvx.exe" if os.name == "nt" else "uvx"))
     if Path(found).exists():
         return found, [SERVER_PACKAGE]

@@ -135,12 +135,37 @@ def table_exists(name: str, schema: str = S) -> bool:
     return found
 
 
+_dead_since: dict = {}  # run_id -> when Exasol was first seen doing nothing for it
+
+
 def _running_run():
-    """A run started in the last 3 hours that has not finished (tables are being rebuilt)."""
+    """A run that is really rebuilding the result tables right now.
+
+    A run whose process was stopped (for example the server restarted mid-run) stays
+    'RUNNING' in the log. It counts as alive only while Exasol is executing statements
+    (or in its first two minutes); once two checks 15 s apart find Exasol idle, it is
+    closed off as interrupted so the pages show the last complete results again."""
     try:
-        r = q1(f"SELECT run_id, started FROM {A}.RUNS WHERE run_status = 'RUNNING' "
-               f"AND started > ADD_HOURS(CURRENT_TIMESTAMP, -3) ORDER BY run_id DESC LIMIT 1")
-        return r
+        r = q1(f"SELECT run_id, started, SECONDS_BETWEEN(CURRENT_TIMESTAMP, started) AS age FROM {A}.RUNS "
+               f"WHERE run_status = 'RUNNING' AND started > ADD_HOURS(CURRENT_TIMESTAMP, -3) ORDER BY run_id DESC LIMIT 1")
+        if not r:
+            return None
+        busy = q1("SELECT COUNT(*) AS n FROM EXA_DBA_SESSIONS WHERE status <> 'IDLE' AND session_id <> CURRENT_SESSION")
+        if float(r["age"] or 0) < 120 or (busy and busy["n"]):
+            _dead_since.pop(r["run_id"], None)
+            return r
+        first = _dead_since.setdefault(r["run_id"], time.time())
+        if time.time() - first < 15:
+            return r
+        with db.connect() as conn:
+            conn.execute(f"UPDATE {A}.RUNS SET run_status = 'FAILED', finished = CURRENT_TIMESTAMP, "
+                         f"error_text = 'Interrupted: the process running it stopped before it finished' "
+                         f"WHERE run_id = {{r}} AND run_status = 'RUNNING'", {"r": r["run_id"]})
+            conn.commit()
+        _dead_since.pop(r["run_id"], None)
+        import logging
+        logging.getLogger("uvicorn.error").warning("analysis run #%s was interrupted earlier; marked as failed", r["run_id"])
+        return None
     except Exception:
         return None
 

@@ -284,7 +284,7 @@ docker run -d --name exasol-nano --restart unless-stopped --stop-timeout 180 --s
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\pip install -r backend\requirements.txt
+.\.venv\Scripts\python -m pip install -r backend\requirements.txt
 cd frontend
 npm install
 cd ..
