@@ -39,7 +39,7 @@ export default function LienReview() {
   return (
     <motion.div variants={staggerParent} initial="hidden" animate="show">
       <PageHead
-        eyebrow="AF1 · lien review queue"
+        eyebrow="Lien review queue"
         title="Holds that deserve a second look"
         lede={q.data ? `Existing restraints ranked by over-hold, age and case status, as of ${dateOnly(q.data.as_of)}.` : 'Existing restraints ranked by over-hold, age and case status.'}
       />
@@ -81,7 +81,7 @@ export default function LienReview() {
 
       <div className="page-head mt-l" style={{ marginBottom: 14 }}>
         <div>
-          <div className="eyebrow">AF5 · oversight</div>
+          <div className="eyebrow">Oversight</div>
           <h2>How holds are distributed</h2>
         </div>
       </div>

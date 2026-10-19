@@ -5,6 +5,7 @@ import { api } from '../api';
 import type { BasisRule, BasisStep } from '../types';
 import { IconChevron, IconCopy } from './Icons';
 import { copyText } from '../lib/download';
+import { plainStep } from '../lib/format';
 
 /** What a result is based on: facts, the rules applied, and every SQL step that ran in Exasol. */
 export function BasisPanel({ facts, rules, steps, where, query, queryTitle }: {
@@ -66,7 +67,7 @@ function Step({ n, s, where }: { n: number; s: BasisStep; where: 'cases' | 'play
       <button className="basis-step" onClick={toggle} disabled={!s.file}>
         <span className="basis-n">{n}</span>
         <span className="basis-main">
-          <b>{s.step}</b>
+          <b>{plainStep(s.step)}</b>
           <span>{s.purpose}</span>
           {passes && passes.length > 0 && (
             <span className="basis-passes">

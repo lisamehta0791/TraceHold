@@ -82,3 +82,7 @@ export const SCENARIO_COLOR: Record<string, string> = {
   BUSINESS_TURNOVER: C.inkSoft, RAPID_CASHOUT: C.terracotta, CROSS_INSTITUTION: C.clay, REVERSAL_FAILED: C.sand,
   SHARED_ACCOUNT: '#8E5B3E', WORKED_EXAMPLE: '#A3463A',
 };
+
+/** Run step names carry internal feature codes ("CF3 sizing, CF6 status"); show them in plain words. */
+export const plainStep = (name: string) =>
+  name.replace(/\b(?:CF|AF)\d(?:\/(?:CF|AF)\d)*\s*/g, '').replace(/^./, (c) => c.toUpperCase());

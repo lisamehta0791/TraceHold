@@ -5,7 +5,7 @@ import type { RetraceResult } from '../types';
 import { Button } from './Button';
 import { ErrorCard } from './ErrorCard';
 import { IconAlert, IconCheck, IconPlay } from './Icons';
-import { rupees } from '../lib/format';
+import { plainStep, rupees } from '../lib/format';
 
 /** Re-runs this one case inside Exasol on the full ledger and checks the figures against the stored results. */
 export function RetracePanel({ caseId }: { caseId: number }) {
@@ -49,7 +49,7 @@ export function RetracePanel({ caseId }: { caseId: number }) {
               ))}</tbody>
             </table>
           </div>
-          <p className="tiny muted">Steps: {res.steps.map((s) => `${s.step} (${(s.ms / 1000).toFixed(1)} s)`).join(' · ')}. Ran in the scratch schema {res.schema}; stored results were not touched.</p>
+          <p className="tiny muted">Steps: {res.steps.map((s) => `${plainStep(s.step)} (${(s.ms / 1000).toFixed(1)} s)`).join(' · ')}. Ran in the scratch schema {res.schema}; stored results were not touched.</p>
         </motion.div>
       )}
     </div>

@@ -32,7 +32,7 @@ export function AiAccuracy() {
           {e.ai_off && <div className={`note ${e.ai_off.passed ? 'olive' : ''}`}>{e.ai_off.passed ? <IconCheck size={15} /> : <IconAlert size={15} />}<span><b>AI-off test {e.ai_off.passed ? 'passed' : 'failed'}:</b> {e.ai_off.detail}</span></div>}
           {e.cf9 && (
             <div>
-              <h3 style={{ marginBottom: 6 }}>Reading letters (CF9): {e.cf9.letters} held-out letters</h3>
+              <h3 style={{ marginBottom: 6 }}>Reading police letters: {e.cf9.letters} held-out letters</h3>
               <div className="basis-facts" style={{ marginBottom: 10 }}>
                 <div><b>{pct(e.cf9.overall.precision)}</b><span>precision (values used that were right)</span></div>
                 <div><b>{pct(e.cf9.overall.recall)}</b><span>recall (stated values that were found)</span></div>
@@ -52,7 +52,7 @@ export function AiAccuracy() {
           )}
           {e.af7 && (
             <div>
-              <h3 style={{ marginBottom: 6 }}>Questions (AF7): {e.af7.correct} of {e.af7.questions} answered with the same rows as hand-written SQL · {e.af7.fidelity_failures} wordings rejected by the number check</h3>
+              <h3 style={{ marginBottom: 6 }}>Ask the results: {e.af7.correct} of {e.af7.questions} answered with the same rows as hand-written SQL · {e.af7.fidelity_failures} wordings rejected by the number check</h3>
               <ul className="clean stack small" style={{ gap: 4 }}>{e.af7.items.map((it) => (
                 <li key={it.question} className="row" style={{ gap: 6 }}>{it.ok ? <IconCheck size={12} /> : <IconAlert size={12} />} {it.question} <span className="muted">{it.note}</span></li>
               ))}</ul>
@@ -60,7 +60,7 @@ export function AiAccuracy() {
           )}
           {e.af8 && (
             <div>
-              <h3 style={{ marginBottom: 6 }}>Rewording (AF8): {e.af8.letters} letters</h3>
+              <h3 style={{ marginBottom: 6 }}>Rewording the account-holder letter: {e.af8.letters} letters</h3>
               <p className="small">{pct(e.af8.fidelity_share)} kept every fact and were used; {pct(e.af8.fallback_share)} failed the check and fell back to the template.</p>
             </div>
           )}

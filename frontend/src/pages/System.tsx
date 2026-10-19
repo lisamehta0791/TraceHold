@@ -16,7 +16,7 @@ import { ExasolFacts } from './ExasolFacts';
 import { PageSkeleton, RowsSkeleton } from '../components/Skeleton';
 import { Tabs } from '../components/Tabs';
 import { BAR_RADIUS, axisProps, gridProps } from '../components/charts';
-import { C, dateTime, int, pct } from '../lib/format';
+import { C, dateTime, int, pct, plainStep } from '../lib/format';
 import { staggerParent } from '../lib/motion';
 import { useAsync } from '../lib/useAsync';
 
@@ -208,7 +208,7 @@ function StepList({ steps, running }: { steps: RunDetail['steps']; running: bool
           <motion.div key={`${s.step}-${i}`} layout initial={{ opacity: 0, x: -10, height: 0 }} animate={{ opacity: 1, x: 0, height: 'auto' }}
             style={{ display: 'grid', gridTemplateColumns: '22px minmax(160px, 1.3fr) 1fr 74px 120px', gap: 10, alignItems: 'center' }} className="small">
             <span className="check-icon" style={{ background: C.olive, width: 18, height: 18 }}><IconCheck size={11} /></span>
-            <span>{s.step}</span>
+            <span>{plainStep(s.step)}</span>
             <div className="rangebar" style={{ height: 6 }}>
               <motion.div className="fill" style={{ left: 0, background: C.clay }} initial={{ width: 0 }} animate={{ width: `${(s.ms / max) * 100}%` }} transition={{ duration: 0.5 }} />
             </div>
@@ -252,7 +252,7 @@ function Evaluation() {
         <Card><div className="stat"><span className="label">Wrongly abstained</span><span className="value">{pct(ab.wrongly_undeterminable / Math.max(1, ab.determinable), 2)}</span><span className="sub">{ab.wrongly_undeterminable} of {int(ab.determinable)} determinable</span></div></Card>
       </div>
       <div className="stack" style={{ gap: 18 }}>
-        <Card title="Request defect detection" sub="CF1 completeness check">
+        <Card title="Request defect detection" sub="Is each police request complete and consistent?">
           <table className="ledger">
             <thead><tr><th>Defect</th><th className="r">Planted</th><th className="r">Detected</th><th className="r">False +</th><th>Precision</th><th>Recall</th></tr></thead>
             <tbody>{data.request_defects.map((r) => (
