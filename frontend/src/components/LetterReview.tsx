@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import type { Extraction, ExtractField, ExtractStatus } from '../types';
 import { Button } from './Button';
 import { IconAlert, IconCheck, IconConflict, IconX } from './Icons';
-import { rupees } from '../lib/format';
+import { plainPrompt, rupees } from '../lib/format';
 
 export const FIELD_ORDER = ['officer', 'designation', 'agency', 'contact', 'case_reference', 'legal_provision', 'quoted_txn',
   'stated_amount', 'action_type', 'targets'];
@@ -77,7 +77,7 @@ export function LetterReview({ ex, onConfirm, confirmLabel = 'Confirm these fiel
     <div className="lr">
       <div className="lr-head">
         <span><b>{nOk}</b> of {fields.length} fields checked · <b>{nBad}</b> flagged · <b>{fields.length - nOk - nBad}</b> not stated</span>
-        <span className="tiny muted">Read by {ex.model} ({ex.prompt_version}) in {(ex.ms / 1000).toFixed(1)} s · every value was then checked by fixed rules</span>
+        <span className="tiny muted">Read by {ex.model} ({plainPrompt(ex.prompt_version)}) in {(ex.ms / 1000).toFixed(1)} s · every value was then checked by fixed rules</span>
       </div>
       <div className="lr-grid">
         <div className="lr-letter">

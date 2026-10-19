@@ -6,5 +6,5 @@
 $Docker = "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin\docker.exe"
 if (-not (Test-Path $Docker)) { $Docker = "docker" }
 Write-Host "Stopping Exasol (this can take up to a minute)..."
-& $Docker stop -t 180 exasol-nano | Out-Null
+& $Docker stop -t 180 tracehold-exasol | Out-Null
 Write-Host "Stopped. Run .\setup.ps1 to start everything again."

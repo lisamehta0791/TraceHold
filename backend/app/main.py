@@ -18,7 +18,6 @@ import pyexasol
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from app import db, texts
 from app.engine import SOFTWARE_VERSION, Config, run_full
@@ -1240,15 +1239,29 @@ def _startup():
 
 # ---------------------------------------------------------------- frontend
 DIST = ROOT / "frontend" / "dist"
-if DIST.exists():
-    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+_NOT_BUILT = """<!doctype html><html lang=en><head><meta charset=utf-8><title>TraceHold: build the website</title>
+<style>body{background:#F6F0E6;color:#2A1B14;font:16px/1.6 system-ui,sans-serif;max-width:640px;margin:12vh auto;padding:0 20px}
+h1{color:#7A2232;font-family:Georgia,serif}pre{background:#EFE6D6;padding:12px 16px;border-radius:8px}</style></head><body>
+<h1>The backend is running. The website is not built yet.</h1>
+<p>Build it once, then reload this page:</p>
+<pre>cd frontend
+npm install
+npm run build</pre>
+<p>Or use the development server instead (<code>npm run dev</code> in the <code>frontend</code> folder) and open the address it prints.</p>
+<p>The API itself is working: <a href="/api/health">/api/health</a> · <a href="/docs">/docs</a></p>
+</body></html>"""
 
-    @app.get("/{path:path}", include_in_schema=False)
-    def spa(path: str):
-        if path == "api" or path.startswith("api/"):
-            # An unknown API address is an error, not the website.
-            raise HTTPException(404, f"No such API endpoint: /{path}. If the website is newer than the backend, restart the backend.")
-        target = DIST / path
-        if path and target.is_file():
-            return FileResponse(target)
-        return FileResponse(DIST / "index.html")
+
+@app.get("/{path:path}", include_in_schema=False)
+def spa(path: str):
+    if path == "api" or path.startswith("api/"):
+        # An unknown API address is an error, not the website.
+        raise HTTPException(404, f"No such API endpoint: /{path}. If the website is newer than the backend, restart the backend.")
+    # Checked on every request, so building the website takes effect without restarting the backend.
+    # (A fresh download has no frontend/dist: it is built by `npm run build` and not stored in the repository.)
+    if not (DIST / "index.html").is_file():
+        return HTMLResponse(_NOT_BUILT, status_code=503)
+    target = (DIST / path).resolve()
+    if path and target.is_file() and target.is_relative_to(DIST.resolve()):
+        return FileResponse(target)
+    return FileResponse(DIST / "index.html")

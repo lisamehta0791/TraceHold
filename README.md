@@ -229,7 +229,7 @@ never reads.
 
 | Layer | Technology |
 |---|---|
-| Database and analytics | Exasol Personal (nano runtime in Docker) |
+| Database and analytics | Exasol Personal (nano runtime in Docker, container `tracehold-exasol`) |
 | Analysis | SQL (window functions, set-based iteration), orchestrated from Python |
 | Backend | Python 3.11+, FastAPI, pyexasol |
 | AI (optional) | Groq API (`openai/gpt-oss-120b`), Exasol's open-source MCP server (`exasol-mcp-server`, in the project's `.venv-mcp`) |
@@ -256,61 +256,142 @@ TraceHold/
 ├── .env.example        settings template (copy to .env; never commit .env)
 ├── .venv-mcp/          Exasol's MCP server, installed by the AI setup (not committed)
 ├── setup.ps1           optional one-command start (Windows)
-└── stop.ps1            stops the database cleanly
+└── stop.ps1            stops the database cleanly (Windows; elsewhere: docker stop -t 180 tracehold-exasol)
 ```
 
 ## Requirements
 
-- Windows 10/11 with **Docker Desktop**
-- **Exasol Personal starter kit**: https://github.com/exasol/exasol-personal (creates the database password file
-  `%USERPROFILE%\.exasol-starter-kit\credentials\nano_sys_password`)
+TraceHold runs on **Windows, Linux and macOS**. Every step below is given for Windows (PowerShell) and for
+Linux / macOS (bash or zsh).
+
+- **Docker**: Docker Desktop (Windows, macOS) or Docker Engine (Linux), allowed to use at least 4 GB of memory
 - **Python 3.11+** and **Node.js 20+**
-- About 8 GB RAM and 3 GB free disk space
+- About **8 GB RAM** and **10 GB free disk space**
+- A 64-bit **Intel or AMD** processor. The Exasol Personal image (`exasol/nano`) is built for x86-64 only; on Apple
+  Silicon Macs (M1-M4) Docker has to emulate it (`--platform linux/amd64`), which is much slower and may not work
 - For the AI features (optional): a **Groq API key** (https://console.groq.com). Exasol's open-source MCP server is
   installed automatically inside the project (`.venv-mcp`) by the AI setup step
 
 ## Installation
 
-Run these once, in PowerShell, from the project folder.
+Run these once, from the project folder.
 
-**1. Start the Exasol database (first time only)**
+**1. Create the database password file**
+
+Exasol reads its administrator password from a file. If you already use the
+[Exasol Personal starter kit](https://github.com/exasol/exasol-personal), the file exists and is reused.
+
+Windows (PowerShell):
 
 ```powershell
 $pw = "$env:USERPROFILE\.exasol-starter-kit\credentials\nano_sys_password"
-docker volume create lienlens-exasol-data
-docker run -d --name exasol-nano --shm-size=512m -m 3g -p 127.0.0.1:8563:8563 `
-  -v lienlens-exasol-data:/exa -v "${pw}:/run/secrets/sys_password:ro" `
-  exasol/nano:2026.2.0-nano.3-amd64 init sys_password_file=/run/secrets/sys_password
-docker logs -f exasol-nano        # wait for "Database is now up and running", then Ctrl+C
+if (-not (Test-Path $pw)) {
+  New-Item -ItemType Directory -Force (Split-Path $pw) | Out-Null
+  -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ }) |
+    Set-Content -NoNewline -Encoding ascii $pw
+}
 ```
 
-The `init` command is only valid the first time, so recreate the container without it:
+Linux / macOS:
+
+```bash
+pw="$HOME/.exasol-starter-kit/credentials/nano_sys_password"
+mkdir -p "$(dirname "$pw")"
+[ -f "$pw" ] || LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 24 > "$pw"
+```
+
+**2. Start the Exasol database (first time only)**
+
+Windows (PowerShell):
 
 ```powershell
-docker stop -t 180 exasol-nano; docker rm exasol-nano
-docker run -d --name exasol-nano --restart unless-stopped --stop-timeout 180 --shm-size=512m -m 3g `
-  -p 127.0.0.1:8563:8563 -v lienlens-exasol-data:/exa exasol/nano:2026.2.0-nano.3-amd64
+$pw = "$env:USERPROFILE\.exasol-starter-kit\credentials\nano_sys_password"
+docker volume create tracehold-exasol-data
+docker run -d --name tracehold-exasol --shm-size=512m -m 3g -p 127.0.0.1:8563:8563 `
+  -v tracehold-exasol-data:/exa -v "${pw}:/run/secrets/sys_password:ro" `
+  exasol/nano:2026.2.0-nano.3-amd64 init sys_password_file=/run/secrets/sys_password
+docker logs -f tracehold-exasol        # wait for "Database is now up and running", then Ctrl+C
 ```
 
-**2. Install the backend and the frontend**
+Linux / macOS (on Apple Silicon, add `--platform linux/amd64` after `docker run -d`):
+
+```bash
+pw="$HOME/.exasol-starter-kit/credentials/nano_sys_password"
+docker volume create tracehold-exasol-data
+docker run -d --name tracehold-exasol --shm-size=512m -m 3g -p 127.0.0.1:8563:8563 \
+  -v tracehold-exasol-data:/exa -v "$pw:/run/secrets/sys_password:ro" \
+  exasol/nano:2026.2.0-nano.3-amd64 init sys_password_file=/run/secrets/sys_password
+docker logs -f tracehold-exasol        # wait for "Database is now up and running", then Ctrl+C
+```
+
+The `init` command is only valid the first time, so recreate the container without it.
+
+Windows (PowerShell):
+
+```powershell
+docker stop -t 180 tracehold-exasol; docker rm tracehold-exasol
+docker run -d --name tracehold-exasol --restart unless-stopped --stop-timeout 180 --shm-size=512m -m 3g `
+  -p 127.0.0.1:8563:8563 -v tracehold-exasol-data:/exa exasol/nano:2026.2.0-nano.3-amd64
+```
+
+Linux / macOS (on Apple Silicon, add `--platform linux/amd64` again):
+
+```bash
+docker stop -t 180 tracehold-exasol && docker rm tracehold-exasol
+docker run -d --name tracehold-exasol --restart unless-stopped --stop-timeout 180 --shm-size=512m -m 3g \
+  -p 127.0.0.1:8563:8563 -v tracehold-exasol-data:/exa exasol/nano:2026.2.0-nano.3-amd64
+```
+
+**3. Install the backend, then install and build the website**
+
+Windows (PowerShell):
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r backend\requirements.txt
 cd frontend
 npm install
+npm run build
 cd ..
 ```
 
-**3. Generate the data, load it and run the analysis**
+Linux / macOS:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements.txt
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+`npm run build` creates the website in `frontend/dist`, which the backend serves. It is not stored in the repository,
+so it has to be built once after downloading (and again after changing frontend code).
+
+**4. Generate the data, load it and run the analysis**
+
+Windows (PowerShell):
 
 ```powershell
-python backend\generator\generate.py --scale 1.0 --seed 2026 --out data\L     # 2-3 minutes
-python backend\generator\letters.py data\L                                     # synthetic police letters
+.\.venv\Scripts\python backend\generator\generate.py --scale 1.0 --seed 2026 --out data\L   # 2-3 minutes
+.\.venv\Scripts\python backend\generator\letters.py data\L                                   # synthetic police letters
 cd backend
-..\.venv\Scripts\python -m app.load ..\data\L --fresh                         # about 1 minute; also sets up the protected layout
-..\.venv\Scripts\python -m app.engine                                         # 2-4 minutes (add --lua to run it as one Exasol script)
-..\.venv\Scripts\python -m app.evaluation                                     # about 1 minute
+..\.venv\Scripts\python -m app.load ..\data\L --fresh     # about 1 minute; also sets up the protected layout
+..\.venv\Scripts\python -m app.engine                     # 2-4 minutes (add --lua to run it as one Exasol script)
+..\.venv\Scripts\python -m app.evaluation                 # about 1 minute
+cd ..
+```
+
+Linux / macOS:
+
+```bash
+.venv/bin/python backend/generator/generate.py --scale 1.0 --seed 2026 --out data/L      # 2-3 minutes
+.venv/bin/python backend/generator/letters.py data/L                                      # synthetic police letters
+cd backend
+../.venv/bin/python -m app.load ../data/L --fresh      # about 1 minute; also sets up the protected layout
+../.venv/bin/python -m app.engine                      # 2-4 minutes (add --lua to run it as one Exasol script)
+../.venv/bin/python -m app.evaluation                  # about 1 minute
 cd ..
 ```
 
@@ -321,9 +402,10 @@ Loading creates the protected layout and the limited user `TH_ENGINE` automatica
 from the `backend` folder; it moves existing tables only after verifying every copy. `--fresh` replaces the source
 data but never the history.
 
-**4. Set up the AI features (optional)**
+**5. Set up the AI features (optional)**
 
-Copy `.env.example` to `.env` and put your Groq key in it:
+Copy `.env.example` to `.env` (`copy .env.example .env` on Windows, `cp .env.example .env` on Linux / macOS) and put
+your Groq key in it:
 
 ```
 GROQ_API_KEY=your_key_here
@@ -332,9 +414,9 @@ GROQ_API_KEY=your_key_here
 Then install Exasol's MCP server in the project, create the AI tables, load the letters and create the read-only
 question user:
 
-```powershell
+```bash
 cd backend
-..\.venv\Scripts\python -m app.ai_setup
+../.venv/bin/python -m app.ai_setup        # Windows: ..\.venv\Scripts\python -m app.ai_setup
 cd ..
 ```
 
@@ -344,53 +426,51 @@ recreates them (and reloads the letters) automatically the next time an AI featu
 
 ## Running TraceHold
 
-The website needs the **backend API** running, and the backend needs **Exasol** running.
+The website needs the **backend** running, and the backend needs **Exasol** running.
 
 **1. Make sure Exasol is running**
 
-```powershell
-docker start exasol-nano
+```bash
+docker start tracehold-exasol
 ```
 
-**2. Start the backend API** (terminal 1, keep it open)
+**2. Start the backend** (keep this terminal open)
+
+Windows (PowerShell):
 
 ```powershell
 cd backend
 ..\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Restart it (`Ctrl+C`, then the same command) whenever the backend code changes.
+Linux / macOS:
 
-**3. Open the website**, either way:
+```bash
+cd backend
+../.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-- **Built website, served by the backend:** build once, then open http://127.0.0.1:8000
+**3. Open http://127.0.0.1:8000**
 
-  ```powershell
-  cd frontend
-  npm run build
-  ```
+That is all: the backend serves the website built in installation step 3. If the page says the website is not built
+yet, run `npm install` and `npm run build` in the `frontend` folder and reload.
 
-- **Development server with hot reload** (terminal 2): open http://localhost:5173
+*Optional, for frontend development:* `npm run dev` in the `frontend` folder starts a development server with hot
+reload on http://localhost:5173. It forwards `/api` to the backend on port 8000, so the backend must be running too.
+It is not needed for normal use.
 
-  ```powershell
-  cd frontend
-  npm run dev
-  ```
+**Stopping:** press `Ctrl+C` in the backend terminal, then stop the database cleanly:
 
-  The development server forwards `/api` to the backend on port 8000. If the backend is not running, it prints
-  one message saying how to start it, and the pages show the same message.
-
-**Stopping:** press `Ctrl+C` in the backend and frontend terminals, then stop the database cleanly:
-
-```powershell
-docker stop -t 180 exasol-nano      # or: .\stop.ps1
+```bash
+docker stop -t 180 tracehold-exasol        # Windows shortcut: .\stop.ps1
 ```
 
 Always give Exasol time to shut down (`-t 180`). Killing it mid-write can corrupt its storage.
 
-**Optional shortcut:** `.\setup.ps1` performs the steps above automatically: it starts Docker and Exasol, installs
-what is missing, loads data and runs the analysis only if they are missing, sets up the AI features, builds the
-website and starts the backend. Run it with `powershell -ExecutionPolicy Bypass -File .\setup.ps1`.
+**Optional shortcut (Windows):** `.\setup.ps1` performs all the steps above automatically: it starts Docker and
+Exasol, creates the password file if it is missing, installs what is missing, loads data and runs the analysis only
+if they are missing, sets up the AI features, builds the website and starts the backend. Run it with
+`powershell -ExecutionPolicy Bypass -File .\setup.ps1`.
 
 ## Using the app
 
@@ -410,12 +490,14 @@ re-trace it live on the full ledger, and try to break the data protection on *Sy
 
 ## Tests and evaluation
 
-```powershell
+```bash
 cd backend
-..\.venv\Scripts\python -m pytest tests          # 47 tests; database tests are skipped if Exasol is not running
-..\.venv\Scripts\python -m app.evaluation        # accuracy against the generator's answer key
-..\.venv\Scripts\python -m app.ai_eval           # AI features on held-out letters (needs GROQ_API_KEY; 20-30 min)
+../.venv/bin/python -m pytest tests          # 47 tests; database tests are skipped if Exasol is not running
+../.venv/bin/python -m app.evaluation        # accuracy against the generator's answer key
+../.venv/bin/python -m app.ai_eval           # AI features on held-out letters (needs GROQ_API_KEY; 20-30 min)
 ```
+
+On Windows use `..\.venv\Scripts\python` instead of `../.venv/bin/python`.
 
 The tests cover the worked example to the paisa, conservation on random cases, determinism (same case twice, same
 evidence packet twice), that the analysis never reads the answer key, that the calculation path never imports the
@@ -494,6 +576,7 @@ The backend serves JSON under `/api` (interactive docs at http://127.0.0.1:8000/
 
 | What you see | Cause and fix |
 |---|---|
+| http://127.0.0.1:8000 says "The website is not built yet" | Run `npm install` and `npm run build` in the `frontend` folder, then reload the page. |
 | `npm run dev` prints proxy / `ECONNREFUSED` errors, pages say the API is not running | The backend is not running. Start it (see [Running TraceHold](#running-tracehold), step 2). |
 | Pages fail after updating TraceHold | Run `python -m app.secure` (from `backend`) once, then restart the backend. |
 | A page shows "This part of the page could not be shown" | The backend is older than the website. Restart the backend and reload the page. |
@@ -502,9 +585,10 @@ The backend serves JSON under `/api` (interactive docs at http://127.0.0.1:8000/
 | AI buttons say "AI is off" | Add `GROQ_API_KEY` to `.env` and restart the backend. Everything else works without it. |
 | *Ask* says the read-only user or the MCP server is not set up | Run `python -m app.ai_setup` from the `backend` folder. |
 | AI calls are slow | Groq's free tier allows about 8,000 tokens a minute; TraceHold waits and retries automatically. |
-| Backend cannot connect to Exasol | `docker start exasol-nano` and wait about a minute; check `docker logs --tail 20 exasol-nano`. |
-| Exasol stops or crashes under load | Give Docker more memory (Docker Desktop → Settings → Resources, or `memory=` in `%USERPROFILE%\.wslconfig`). |
-| Port 8000 is busy | Find it with `netstat -ano \| findstr :8000`, or start the backend with `--port 8010` and run the dev server with `$env:TRACEHOLD_API_PORT=8010; npm run dev`. |
+| Backend cannot connect to Exasol | `docker start tracehold-exasol` and wait about a minute; check `docker logs --tail 20 tracehold-exasol`. |
+| Exasol stops or crashes under load | Give Docker more memory (Docker Desktop → Settings → Resources; on Windows also `memory=` in `%USERPROFILE%\.wslconfig`). |
+| Exasol does not start on an Apple Silicon Mac | The image is x86-64 only. Add `--platform linux/amd64` to `docker run` and enable Rosetta in Docker Desktop (Settings → General); expect it to be slow. |
+| Port 8000 is busy | Find what uses it (`netstat -ano \| findstr :8000` on Windows, `lsof -i :8000` on Linux / macOS), or start the backend with `--port 8010`. |
 
 ## Responsible use
 

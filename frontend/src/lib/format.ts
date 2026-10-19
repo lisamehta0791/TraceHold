@@ -86,3 +86,6 @@ export const SCENARIO_COLOR: Record<string, string> = {
 /** Run step names carry internal feature codes ("CF3 sizing, CF6 status"); show them in plain words. */
 export const plainStep = (name: string) =>
   name.replace(/\b(?:CF|AF)\d(?:\/(?:CF|AF)\d)*\s*/g, '').replace(/^./, (c) => c.toUpperCase());
+
+/** Prompt versions are stored as "cf9-v4"; show only the version ("prompt v4"). */
+export const plainPrompt = (v: string) => v.replace(/^(?:cf|af)\d+-/i, 'prompt ');

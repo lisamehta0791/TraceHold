@@ -111,9 +111,16 @@ def main():
         from app.secure import ensure_layout
         ensure_layout()
         print(f"[ai] tables and {RESULTS_SCHEMA} views ready")
-        n = load_letters(conn, db.ROOT / "data" / "L")
-        conn.commit()
-        print(f"[ai] {n} synthetic letters loaded (answer key in {db.GT_SCHEMA}.LETTER_TRUTH)")
+        data_dir = db.ROOT / "data" / "L"
+        if (data_dir / "requests.csv").exists():
+            n = load_letters(conn, data_dir)
+            conn.commit()
+            print(f"[ai] {n} synthetic letters loaded (answer key in {db.GT_SCHEMA}.LETTER_TRUTH)")
+        else:
+            # the letters are written from the generated requests; without the data folder, keep what is loaded
+            n = conn.execute(f"SELECT COUNT(*) FROM {db.SRC_SCHEMA}.REQUEST_DOCUMENTS").fetchval()
+            print(f"[ai] no generated data in {data_dir}: letters not reloaded ({n} already in Exasol). "
+                  "Generate the data first (README, installation step 4) to create them.")
         pw = create_reader(conn)
         for line in prove_read_only(pw):
             print(f"[ai] {READER}: {line}")

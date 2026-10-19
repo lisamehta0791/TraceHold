@@ -35,6 +35,7 @@ ROOT = db.ROOT
 DOCKER = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "DockerDesktop", "resources", "bin", "docker.exe")
 if not os.path.exists(DOCKER):
     DOCKER = "docker"
+EXASOL_CONTAINER = os.environ.get("TRACEHOLD_CONTAINER", "tracehold-exasol")
 PG_CONTAINER, PG_PORT, PG_PW = "tracehold-pg-baseline", 5440, "tracehold"
 PG_SETTINGS = ["shared_buffers=1GB", "work_mem=256MB", "maintenance_work_mem=512MB", "effective_cache_size=3GB",
                "max_parallel_workers_per_gather=4", "random_page_cost=1.1", "synchronous_commit=off"]
@@ -265,7 +266,7 @@ def main():
         # Whatever happened, PostgreSQL is stopped and Exasol is running again afterwards.
         if "PostgreSQL" in a.engines:
             _docker("stop", "-t", "120", PG_CONTAINER)
-            _docker("start", "exasol-nano")
+            _docker("start", EXASOL_CONTAINER)
             _wait_exasol()
 
 
@@ -274,11 +275,11 @@ def _run_engines(a, sides, results, versions):
         # Only one database runs at a time: both share a 4 GB Docker VM.
         if name == "Exasol":
             _docker("stop", "-t", "120", PG_CONTAINER)
-            _docker("start", "exasol-nano")
+            _docker("start", EXASOL_CONTAINER)
             _wait_exasol()
         else:
             # A graceful shutdown: killing Exasol mid-write can corrupt its storage.
-            _docker("stop", "-t", "180", "exasol-nano")
+            _docker("stop", "-t", "180", EXASOL_CONTAINER)
         side = sides[name]()
         versions[name] = side.version()
         cases_by_tier = {}

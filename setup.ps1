@@ -9,7 +9,7 @@
     .\setup.ps1 -Scale 0.2  use a smaller dataset when (re)loading data
     .\setup.ps1 -NoBrowser  do not open the browser automatically
 
-  Requirements: Docker Desktop, the Exasol Personal starter kit, Python 3.11+, Node.js 20+.
+  Requirements: Docker Desktop, Python 3.11+, Node.js 20+. The database password file is created if missing.
 #>
 param(
     [double]$Scale = 1.0,
@@ -25,8 +25,8 @@ Set-Location $PSScriptRoot
 
 $Docker = "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin\docker.exe"
 if (-not (Test-Path $Docker)) { $Docker = "docker" }
-$Container = "exasol-nano"
-$Volume = "lienlens-exasol-data"
+$Container = "tracehold-exasol"
+$Volume = "tracehold-exasol-data"
 $Image = "exasol/nano:2026.2.0-nano.3-amd64"
 $PwFile = "$env:USERPROFILE\.exasol-starter-kit\credentials\nano_sys_password"
 $Py = ".\.venv\Scripts\python.exe"
@@ -38,8 +38,14 @@ function Fail($m) { Write-Host "`n[!] $m" -ForegroundColor Red; exit 1 }
 Step "Checking prerequisites"
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) { Fail "Python 3.11+ is not installed or not on PATH." }
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) { Fail "Node.js 20+ (npm) is not installed or not on PATH." }
-if (-not (Test-Path $PwFile)) { Fail "Exasol Personal starter kit not found ($PwFile). Install it first: https://github.com/exasol/exasol-personal" }
-Write-Host "Python, Node.js and the Exasol starter kit are present."
+if (-not (Test-Path $PwFile)) {
+    # The database only needs a password file; the Exasol Personal starter kit creates the same one.
+    New-Item -ItemType Directory -Force (Split-Path $PwFile) | Out-Null
+    $chars = [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+    -join (1..24 | ForEach-Object { $chars | Get-Random }) | Set-Content -NoNewline -Encoding ascii $PwFile
+    Write-Host "Created a database password file: $PwFile"
+}
+Write-Host "Python and Node.js are present; the database password file is in place."
 
 # ------------------------------------------------------------------ 2. Docker
 Step "Docker engine"
@@ -103,7 +109,7 @@ if ($Reload -or $state -eq "EMPTY") {
     Step "Synthetic data"
     if ($Reload -or -not (Test-Path "data\L\manifest.json")) {
         Write-Host "Generating about 2.4 million synthetic transactions (2-3 minutes)..."
-        python backend\generator\generate.py --scale $Scale --seed 2026 --out data\L
+        & $Py backend\generator\generate.py --scale $Scale --seed 2026 --out data\L
         if ($LASTEXITCODE -ne 0) { Fail "Data generation failed (see above)." }
     }
     Step "Loading the data into Exasol"

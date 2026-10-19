@@ -3,8 +3,11 @@ import { Card } from '../components/Card';
 import { ErrorCard } from '../components/ErrorCard';
 import { IconAlert, IconCheck } from '../components/Icons';
 import { RowsSkeleton } from '../components/Skeleton';
-import { dateTime, pct } from '../lib/format';
+import { dateTime, pct, plainPrompt } from '../lib/format';
 import { useAsync } from '../lib/useAsync';
+
+// the AI log stores internal feature codes; show what each call was for
+const FEATURE: Record<string, string> = { CF9: 'Reading a police letter', AF7: 'Ask the results', AF8: 'Rewording a letter' };
 
 type Ev = {
   available: boolean; generated_at?: string; model?: string; note?: string;
@@ -81,8 +84,8 @@ export function AiCallLog() {
           <table className="ledger">
             <thead><tr><th>When (UTC)</th><th>Feature</th><th>Model</th><th>Prompt</th><th>Input</th><th className="r">Time</th><th>Status</th></tr></thead>
             <tbody>{log.data.calls.map((c) => (
-              <tr key={c.call_id}><td className="small">{dateTime(c.created)}</td><td className="small">{c.feature}</td><td className="small mono">{c.model}</td>
-                <td className="small mono">{c.prompt_version}</td><td className="small">{c.input_ref}</td><td className="r num small">{(c.ms / 1000).toFixed(1)} s</td><td className="small">{c.status}</td></tr>
+              <tr key={c.call_id}><td className="small">{dateTime(c.created)}</td><td className="small">{FEATURE[c.feature] ?? c.feature}</td><td className="small mono">{c.model}</td>
+                <td className="small mono">{plainPrompt(c.prompt_version)}</td><td className="small">{c.input_ref}</td><td className="r num small">{(c.ms / 1000).toFixed(1)} s</td><td className="small">{c.status}</td></tr>
             ))}</tbody>
           </table>
         </div>
